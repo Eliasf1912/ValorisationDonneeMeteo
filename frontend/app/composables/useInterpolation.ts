@@ -1,5 +1,9 @@
 import type { NationalIndicatorDataPoint } from "~/types/api";
 
+export function lerp(a: number, b: number, t: number): number {
+    return a + t * (b - a);
+}
+
 /**
  * Inserts interpolated crossing points wherever temperature crosses baseline_mean.
  * At each crossing, temperature === baseline_mean, making the red/blue band areas
@@ -21,29 +25,34 @@ export function insertCrossingPoints(
         if (prevDiff * currDiff < 0) {
             // t ∈ (0,1) where the two lines intersect
             const t = prevDiff / (prevDiff - currDiff);
-            const lerp = (a: number, b: number) => a + t * (b - a);
             const crossDate = new Date(
                 new Date(prev.date).getTime() +
                     t *
                         (new Date(curr.date).getTime() -
                             new Date(prev.date).getTime()),
             );
-            const crossValue = lerp(prev.temperature, curr.temperature);
+            const crossValue = lerp(prev.temperature, curr.temperature, t);
+            const baselineStdDevUpper: number = lerp(
+                prev.baseline_std_dev_upper,
+                curr.baseline_std_dev_upper,
+                t,
+            );
+            const baselineStdDevLower: number = lerp(
+                prev.baseline_std_dev_lower,
+                curr.baseline_std_dev_lower,
+                t,
+            );
             result.push({
                 date: crossDate.toISOString(),
                 temperature: crossValue,
                 baseline_mean: crossValue, // equal → bands are zero at this point
-                baseline_std_dev_upper: lerp(
-                    prev.baseline_std_dev_upper,
-                    curr.baseline_std_dev_upper,
-                ),
-                baseline_std_dev_lower: lerp(
-                    prev.baseline_std_dev_lower,
-                    curr.baseline_std_dev_lower,
-                ),
-                baseline_max: lerp(prev.baseline_max, curr.baseline_max),
-                baseline_min: lerp(prev.baseline_min, curr.baseline_min),
+                baseline_std_dev_upper: baselineStdDevUpper,
+                baseline_std_dev_lower: baselineStdDevLower,
+                baseline_max: lerp(prev.baseline_max, curr.baseline_max, t),
+                baseline_min: lerp(prev.baseline_min, curr.baseline_min, t),
                 isInterpolated: true,
+                is_hot_peak: crossValue > baselineStdDevUpper,
+                is_cold_peak: crossValue < baselineStdDevLower,
             });
         }
 
