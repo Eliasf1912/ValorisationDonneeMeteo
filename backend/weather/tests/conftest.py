@@ -30,7 +30,7 @@ def insert_quotidienne(
                 "day": day,
                 "tx": tx,
                 "tn": tn,
-                "tntxm": ((tx or 0) + (tn or 0)) / 2 if tx and tn else None,
+                "tntxm": (tx + tn) / 2 if tx is not None and tn is not None else None,
             },
         )
 
@@ -87,6 +87,12 @@ def get_drop_mv_or_table_sql(
     mv_or_table_name: str,
     schema: str = "public",
 ) -> str:
+    # mv_or_table_name est une vraie vue matérialisée en prod/dev, mais ici
+    # le conftest la recrée comme TABLE ordinaire pour pouvoir y insérer des
+    # données de test. Son type dépend donc de ce que la session précédente a
+    # laissé : DROP TABLE échoue sur une MV et DROP MATERIALIZED VIEW échoue
+    # sur une table. Le DO $$ consulte pg_matviews / pg_tables pour choisir
+    # la bonne commande avant d'exécuter.
     return f"""
         DO $$ BEGIN
             IF EXISTS (
@@ -141,12 +147,6 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
         with connection.cursor() as cur:
             cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb;")
             cur.execute("DROP TABLE IF EXISTS public.mv_records_battus_meta;")
-            # mv_records_battus est une vraie vue matérialisée en prod/dev, mais ici
-            # le conftest la recrée comme TABLE ordinaire pour pouvoir y insérer des
-            # données de test. Son type dépend donc de ce que la session précédente a
-            # laissé : DROP TABLE échoue sur une MV et DROP MATERIALIZED VIEW échoue
-            # sur une table. Le DO $$ consulte pg_matviews / pg_tables pour choisir
-            # la bonne commande avant d'exécuter.
             cur.execute(get_drop_mv_or_table_sql(mv_or_table_name="mv_records_battus"))
             cur.execute(
                 get_drop_mv_or_table_sql(mv_or_table_name="mv_first_temperature_date")
@@ -158,6 +158,13 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
             )
             cur.execute(schema_sql)
             cur.execute(ref_department_region_sql)
+            cur.execute("""
+                CREATE TABLE public.mv_first_temperature_date (
+                    station_code           char(8),
+                    first_temperature_date timestamp,
+                    CONSTRAINT "mv_first_temperature_date_pkey" PRIMARY KEY ("station_code")
+                );
+            """)
             cur.execute(v_station_sql)
             cur.execute(mv_quot_sql)
             cur.execute(v_quot_sql)
@@ -180,11 +187,5 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
                     department    integer,
                     record_value  double precision,
                     record_date   timestamp
-                );
-            """)
-            cur.execute("""
-                CREATE TABLE public.mv_first_temperature_date (
-                    station_code           char(8),
-                    first_temperature_date timestamp
                 );
             """)

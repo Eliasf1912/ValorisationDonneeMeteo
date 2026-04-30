@@ -13,6 +13,7 @@ def insert_station(
     alt: float = 0.0,
     annee_de_creation: int = 1950,
     classe_recente: int = 1,
+    first_temperature_date: dt.date = dt.date(1950, 1, 1),
 ) -> None:
     now = dt.datetime.now()
 
@@ -58,4 +59,13 @@ def insert_station(
             ON CONFLICT ("station_code", "date_debut") DO NOTHING
             """,
             {"code": code, "classe": classe_recente},
+        )
+        cur.execute(
+            """
+            INSERT INTO public."mv_first_temperature_date"
+                ("station_code", "first_temperature_date")
+            VALUES (%(code)s, %(first_temperature_date)s)
+            ON CONFLICT ("station_code") DO UPDATE SET "first_temperature_date" = EXCLUDED."first_temperature_date"
+            """,
+            {"code": code, "first_temperature_date": first_temperature_date},
         )

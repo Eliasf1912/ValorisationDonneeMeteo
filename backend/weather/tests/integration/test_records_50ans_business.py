@@ -19,11 +19,16 @@ from weather.tests.helpers.stations import insert_station
 
 
 @pytest.mark.django_db
-def test_after_cutoff_record_before_20ans_is_excluded():
-    """Record post-cutoff dont la date est < création+20 → exclu."""
+def test_after_cutoff_record_before_50ans_is_excluded():
+    """Record post-cutoff dont la date est < création+50 → exclu."""
     code = "76116001"
     # Créée en 1980, seuil = 2030-01-01
-    insert_station(code, "Station Jeune", departement=76, annee_de_creation=1980)
+    insert_station(
+        code,
+        "Station Jeune",
+        departement=76,
+        first_temperature_date=dt.date(1980, 1, 1),
+    )
     set_cutoff(dt.date(2025, 12, 31))
 
     # 2026 < 2030 → doit être ignoré
@@ -35,15 +40,20 @@ def test_after_cutoff_record_before_20ans_is_excluded():
     )
 
     entries = [e for e in result.entries if e.station_id.strip() == code]
-    assert entries == [], "Une station de moins de 20 ans ne doit pas apparaître"
+    assert entries == [], "Une station de moins de 50 ans ne doit pas apparaître"
 
 
 @pytest.mark.django_db
-def test_after_cutoff_record_exactly_at_20ans_is_included():
-    """Record post-cutoff dont la date est exactement création+20 → inclus."""
+def test_after_cutoff_record_exactly_at_50ans_is_included():
+    """Record post-cutoff dont la date est exactement création+50 → inclus."""
     code = "76116002"
     # Créée en 1976, seuil = 2026-01-01
-    insert_station(code, "Station 20ans pile", departement=76, annee_de_creation=1976)
+    insert_station(
+        code,
+        "Station 50ans pile",
+        departement=76,
+        first_temperature_date=dt.date(1976, 1, 1),
+    )
     set_cutoff(dt.date(2025, 12, 31))
 
     # 2026-01-01 == seuil → doit être inclus
@@ -60,11 +70,16 @@ def test_after_cutoff_record_exactly_at_20ans_is_included():
 
 
 @pytest.mark.django_db
-def test_after_cutoff_record_after_20ans_is_included():
-    """Record post-cutoff dont la date est > création+20 → inclus normalement."""
+def test_after_cutoff_record_after_50ans_is_included():
+    """Record post-cutoff dont la date est > création+50 → inclus normalement."""
     code = "76116003"
     # Créée en 1970, seuil = 2020-01-01
-    insert_station(code, "Station Ancienne", departement=76, annee_de_creation=1970)
+    insert_station(
+        code,
+        "Station Ancienne",
+        departement=76,
+        first_temperature_date=dt.date(1970, 1, 1),
+    )
     set_cutoff(dt.date(2025, 12, 31))
 
     insert_quotidienne(dt.date(2026, 8, 10), code, tx=42.0)
@@ -80,17 +95,22 @@ def test_after_cutoff_record_after_20ans_is_included():
 
 
 @pytest.mark.django_db
-def test_after_cutoff_only_recent_records_cross_20ans_threshold():
+def test_after_cutoff_only_recent_records_cross_50ans_threshold():
     """Station avec records pré et post-seuil : seul le post-seuil apparaît."""
     code = "76116004"
-    # Créée en 1978, seuil = 2028-01-01
-    insert_station(code, "Station Mixte", departement=76, annee_de_creation=1978)
-    set_cutoff(dt.date(2025, 12, 31))
+    # Créée en 1962, seuil = 2012-01-01
+    insert_station(
+        code,
+        "Station Mixte",
+        departement=76,
+        first_temperature_date=dt.date(1962, 1, 1),
+    )
+    set_cutoff(dt.date(2009, 12, 31))
 
-    # 2026 < 2028 → filtré
-    insert_quotidienne(dt.date(2026, 6, 1), code, tx=38.0)
-    # 2029 >= 2028 → inclus
-    insert_quotidienne(dt.date(2029, 7, 20), code, tx=41.0)
+    # 2010 < 2012 → filtré
+    insert_quotidienne(dt.date(2010, 6, 1), code, tx=38.0)
+    # 2014 >= 2012 → inclus
+    insert_quotidienne(dt.date(2014, 7, 20), code, tx=41.0)
 
     ds = HybridTemperatureRecordsDataSource()
     result = ds.fetch_records(
@@ -99,4 +119,4 @@ def test_after_cutoff_only_recent_records_cross_20ans_threshold():
 
     entries = [e for e in result.entries if e.station_id.strip() == code]
     assert len(entries) == 1
-    assert entries[0].record_date == dt.date(2029, 7, 20)
+    assert entries[0].record_date == dt.date(2014, 7, 20)
