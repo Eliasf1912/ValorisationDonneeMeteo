@@ -1229,7 +1229,7 @@ class HybridTemperatureRecordsDataSource(TemperatureRecordsDataSource):
             FROM ordered o
             JOIN public.v_station_records vs ON vs.station_code = o."NUM_POSTE"
             WHERE o."{col}" {cmp} o.prev_val
-              AND o."AAAAMMJJ" >= make_date(vs.first_temperature_date + 50, 1, 1)
+              AND o."AAAAMMJJ" >= vs.first_temperature_date + interval '50 years'
               {date_filter_clauses}
               {terr_filter_clause}
               {station_filter_clauses}
