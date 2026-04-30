@@ -14,13 +14,16 @@ SELECT DISTINCT ON (s."id")
     s."lat" AS lat,
     s."alt" AS alt,
     s."postePublic" AS is_public,
-    scr.classe AS classe_recente,
+    scr."classe" AS classe_recente,
     scd."annee_de_creation" AS annee_de_creation,
-    scd."annee_de_fermeture" AS annee_de_fermeture
+    scd."annee_de_fermeture" AS annee_de_fermeture,
+    ftd."first_temperature_date" AS first_temperature_date
 FROM public."Station" s
     JOIN public."station_creation_date" scd
         ON s."id" = scd."station_code"
     LEFT JOIN station_classe_recente scr
         ON s."id" = scr."station_code"
+    JOIN public."mv_first_temperature_date" ftd
+        ON s."id" = ftd."station_code"
 WHERE s."typePoste" <= 3
 ORDER BY s."id";

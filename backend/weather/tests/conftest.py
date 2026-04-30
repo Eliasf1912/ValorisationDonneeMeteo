@@ -82,6 +82,28 @@ def clear_mv() -> None:
         cur.execute("TRUNCATE public.mv_records_battus_meta;")
 
 
+def get_drop_mv_or_table_sql(
+    *,
+    mv_or_table_name: str,
+    schema: str = "public",
+) -> str:
+    return f"""
+        DO $$ BEGIN
+            IF EXISTS (
+                SELECT 1 FROM pg_matviews
+                WHERE schemaname = '{schema}' AND matviewname = '{mv_or_table_name}'
+            ) THEN
+                DROP MATERIALIZED VIEW {schema}.{mv_or_table_name};
+            ELSIF EXISTS (
+                SELECT 1 FROM pg_tables
+                WHERE schemaname = '{schema}' AND tablename = '{mv_or_table_name}'
+            ) THEN
+                DROP TABLE {schema}.{mv_or_table_name};
+            END IF;
+        END $$;
+    """
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_db_schema_and_views(django_db_setup, django_db_blocker):
     """
@@ -125,21 +147,10 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
             # laissé : DROP TABLE échoue sur une MV et DROP MATERIALIZED VIEW échoue
             # sur une table. Le DO $$ consulte pg_matviews / pg_tables pour choisir
             # la bonne commande avant d'exécuter.
-            cur.execute("""
-                DO $$ BEGIN
-                    IF EXISTS (
-                        SELECT 1 FROM pg_matviews
-                        WHERE schemaname = 'public' AND matviewname = 'mv_records_battus'
-                    ) THEN
-                        DROP MATERIALIZED VIEW public.mv_records_battus;
-                    ELSIF EXISTS (
-                        SELECT 1 FROM pg_tables
-                        WHERE schemaname = 'public' AND tablename = 'mv_records_battus'
-                    ) THEN
-                        DROP TABLE public.mv_records_battus;
-                    END IF;
-                END $$;
-            """)
+            cur.execute(get_drop_mv_or_table_sql(mv_or_table_name="mv_records_battus"))
+            cur.execute(
+                get_drop_mv_or_table_sql(mv_or_table_name="mv_first_temperature_date")
+            )
             cur.execute("DROP VIEW IF EXISTS public.v_quotidienne_itn CASCADE;")
             cur.execute("DROP VIEW IF EXISTS public.v_station CASCADE;")
             cur.execute(
@@ -169,5 +180,11 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
                     department    integer,
                     record_value  double precision,
                     record_date   timestamp
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE public.mv_first_temperature_date (
+                    station_code           char(8),
+                    first_temperature_date timestamp
                 );
             """)
