@@ -156,12 +156,16 @@ describe("itnChartTooltipFormatter", () => {
                     isInterpolated: 0,
                 },
                 $vars: ["seriesName", "name", "value"],
-                marker: 'dummy-marker"></span>',
+                marker: "dummy-marker",
             },
         ];
         const result = itnChartTooltipFormatter(params, "day");
+        // TODO: Enable when extremes are available
+        // expect(result).toBe(
+        //     "lun. 23 mars 2026<br/>ITN : 17.3°C<br/>ITN des normales : 18.5°C<br/>dummy-markerExtrêmes : [12.6°C – 24.4°C]<br/>dummy-markerÉcart-type : [16.9°C – 20.1°C]",
+        // );
         expect(result).toBe(
-            'lun. 23 mars 2026<br/>ITN : 17.3°C<br/>ITN des normales : 18.5°C<br/>dummy-markerExtrêmes : [12.6°C – 24.4°C]<br/>dummy-marker"></span>Écart-type : [16.9°C – 20.1°C]',
+            "lun. 23 mars 2026<br/>ITN : 17.3°C<br/>ITN des normales : 18.5°C<br/>dummy-markerÉcart-type : [16.9°C – 20.1°C]",
         );
     });
 
@@ -245,12 +249,16 @@ describe("itnChartTooltipFormatter", () => {
                     isInterpolated: 0,
                 },
                 $vars: ["seriesName", "name", "value"],
-                marker: 'dummy-marker"></span>',
+                marker: "dummy-marker",
             },
         ];
         const result = itnChartTooltipFormatter(params, "month");
+        // TODO: Enable when extremes are available
+        // expect(result).toBe(
+        //     "mars 2026<br/>ITN : 18.0°C<br/>ITN des normales : 17.9°C<br/>dummy-markerExtrêmes : [11.1°C – 24.4°C]<br/>dummy-markerÉcart-type : [16.2°C – 19.6°C]",
+        // );
         expect(result).toBe(
-            'mars 2026<br/>ITN : 18.0°C<br/>ITN des normales : 17.9°C<br/>dummy-markerExtrêmes : [11.1°C – 24.4°C]<br/>dummy-marker"></span>Écart-type : [16.2°C – 19.6°C]',
+            "mars 2026<br/>ITN : 18.0°C<br/>ITN des normales : 17.9°C<br/>dummy-markerÉcart-type : [16.2°C – 19.6°C]",
         );
     });
 
@@ -334,12 +342,16 @@ describe("itnChartTooltipFormatter", () => {
                     isInterpolated: 0,
                 },
                 $vars: ["seriesName", "name", "value"],
-                marker: 'dummy-marker"></span>',
+                marker: "dummy-marker",
             },
         ];
         const result = itnChartTooltipFormatter(params, "year");
+        // TODO: Enable when extremes are available
+        // expect(result).toBe(
+        //     '2026<br/>ITN : 15.5°C<br/>ITN des normales : 15.4°C<br/>dummy-markerExtrêmes : [4.7°C – 24.4°C]<br/>Écart-type : [13.7°C – 17.2°C]',
+        // );
         expect(result).toBe(
-            '2026<br/>ITN : 15.5°C<br/>ITN des normales : 15.4°C<br/>dummy-markerExtrêmes : [4.7°C – 24.4°C]<br/>dummy-marker"></span>Écart-type : [13.7°C – 17.2°C]',
+            "2026<br/>ITN : 15.5°C<br/>ITN des normales : 15.4°C<br/>dummy-markerÉcart-type : [13.7°C – 17.2°C]",
         );
     });
 
@@ -375,14 +387,6 @@ describe("itnChartTooltipFormatter", () => {
     });
 
     // --- Output structure ---
-
-    it("joins 5 lines with <br/>", () => {
-        const params = makeDefaultParams();
-        const result = itnChartTooltipFormatter(params, "day");
-
-        const parts = result.split("<br/>");
-        expect(parts).toHaveLength(5);
-    });
 
     it("first line is the formatted date", () => {
         const params = makeDefaultParams({ date: "2024-06-01" });
@@ -446,7 +450,8 @@ describe("itnChartTooltipFormatter", () => {
 
     // --- Extrêmes line ---
 
-    it("includes Extrêmes with marker and range", () => {
+    // TODO: Enable when extremes are available
+    it.skip("includes Extrêmes with marker and range", () => {
         const marker = `<span>E</span>`;
         const overrides = { baseline_min: 10.0, baseline_max: 30.0 };
         // All data is read from the first param's value, so override there
@@ -461,7 +466,8 @@ describe("itnChartTooltipFormatter", () => {
         expect(result).toContain(`${marker}Extrêmes : [10.0°C – 30.0°C]`);
     });
 
-    it("formats extremes with one decimal place", () => {
+    // TODO: Enable when extremes are available
+    it.skip("formats extremes with one decimal place", () => {
         const params = makeDefaultParams({
             baseline_min: 12,
             baseline_max: 25,
@@ -520,7 +526,7 @@ describe("itnChartTooltipFormatter", () => {
 
         // Lines for missing series have no marker, output still rendered
         expect(result).toContain("ITN des normales :");
-        expect(result).toContain("Extrêmes :");
+        // expect(result).toContain("Extrêmes :"); // TODO: Enable when extremes are available
         expect(result).toContain("Écart-type :");
     });
 });

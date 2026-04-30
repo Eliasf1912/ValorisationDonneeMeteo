@@ -12,9 +12,9 @@ import { useMapColors } from "~/constants/colors";
 import { FONT_CHARTS } from "~/constants/fonts";
 import { itnChartTooltipFormatter } from "./tooltipFormatters/itnChartTooltipFormatter";
 import {
-    itnStackedTooltipFormatter,
-    formatStackedAxisLabel,
     formatContinuousAxisLabel,
+    formatStackedAxisLabel,
+    itnStackedTooltipFormatter,
 } from "./tooltipFormatters/itnStackedTooltipFormatter";
 import {
     DataZoomComponent,
@@ -99,8 +99,8 @@ function buildStackedOption(
         const p = baselineByPos.get(pos)!;
         return [
             pos,
-            p.baseline_min,
-            p.baseline_max - p.baseline_min,
+            undefined, // p.baseline_min, // TODO: Enable when extremes are available
+            undefined, // p.baseline_max - p.baseline_min, // TODO: Enable when extremes are available
             p.baseline_std_dev_lower,
             p.baseline_std_dev_upper - p.baseline_std_dev_lower,
             p.baseline_mean,
@@ -278,9 +278,9 @@ const option = computed<ECOption>(() => {
                     baseline_std_dev_band:
                         point.baseline_std_dev_upper -
                         point.baseline_std_dev_lower,
-                    baseline_max: point.baseline_max,
-                    baseline_min: point.baseline_min,
-                    baseline_band: point.baseline_max - point.baseline_min,
+                    baseline_max: undefined, // point.baseline_max, // TODO: Enable when extremes are available
+                    baseline_min: undefined, // point.baseline_min, // TODO: Enable when extremes are available
+                    baseline_band: undefined, // point.baseline_max - point.baseline_min, // TODO: Enable when extremes are available
                     cold_blue_band:
                         point.baseline_mean -
                         Math.min(point.temperature, point.baseline_mean),
