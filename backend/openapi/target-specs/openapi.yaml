@@ -160,7 +160,7 @@ paths:
             type: integer
             minimum: 1
             maximum: 500
-          default: 50
+            default: 50
           description: Nombre maximal d'éléments retournés.
 
         - name: offset
@@ -746,7 +746,7 @@ paths:
           schema:
             type: string
             enum: [hot, cold]
-          default: hot
+            default: hot
         - name: page
           in: query
           required: false
@@ -755,7 +755,7 @@ paths:
           schema:
             type: integer
             minimum: 1
-          default: 1
+            default: 1
           example: 1
         - name: page_size
           in: query
@@ -766,7 +766,7 @@ paths:
             type: integer
             minimum: 1
             maximum: 500
-          default: 50
+            default: 50
           example: 50
         - name: sort
           in: query
@@ -789,7 +789,7 @@ paths:
             - `-record_value,station_name` : tri par valeur décroissante puis nom croissant
           schema:
             type: string
-          default: record_value
+            default: record_value
           example: "-record_value,station_name"
         - name: classe_recente_min
           in: query
