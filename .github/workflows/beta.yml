@@ -12,7 +12,7 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  deploy-prod:
+  deploy-beta:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
