@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 
+from weather.services.temperature_records.protocols import TemperatureRecordsDataSource
 from weather.services.temperature_records.types import (
     Pagination,
     TemperatureRecordEntry,
@@ -237,7 +238,7 @@ _FAKE_COLD_RECORDS: list[TemperatureRecordEntry] = [
 ]
 
 
-class FakeTemperatureRecordsDataSource:
+class FakeTemperatureRecordsDataSource(TemperatureRecordsDataSource):
     """
     Data source fake pour les records progressifs de température.
     Retourne des données déterministes avec plusieurs lignes par station.

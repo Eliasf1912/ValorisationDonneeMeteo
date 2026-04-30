@@ -74,6 +74,7 @@ from weather.services.temperature_minmax.types import (
     MinMaxGraphQuery,
     StationDailyMinMaxSeries,
 )
+from weather.services.temperature_records.protocols import TemperatureRecordsDataSource
 from weather.services.temperature_records.types import (
     SEASON_MONTHS,
     TemperatureRecordEntry,
@@ -1011,7 +1012,7 @@ class MaterializedTemperatureRecordsDataSource:
         ]
 
 
-class HybridTemperatureRecordsDataSource:
+class HybridTemperatureRecordsDataSource(TemperatureRecordsDataSource):
     """
     Data source hybride : lit les records pré-calculés depuis mv_records_battus
     (snapshot figé) et complète à chaud les nouvelles données (après cutoff_date)
