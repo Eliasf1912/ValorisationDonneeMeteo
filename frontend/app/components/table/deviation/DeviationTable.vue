@@ -4,11 +4,11 @@ import { UBadge, UButton } from "#components";
 import {
     CENTERED_TD,
     EXPORT_BTN_UI,
+    makeSortableColFactory,
     REGION_META,
     STATION_META,
     TABLE_HEADER_BTN_MULTILINE_CLASS,
     TEMPERATURE_BADGE_SIZE,
-    makeSortableColFactory,
     temperatureBadgeClass,
     truncatedCell,
 } from "~/constants/tableUtils";
@@ -72,8 +72,9 @@ interface TableRow {
     anneeDeCreation: number;
 }
 
-const tableData = computed<TableRow[]>(() =>
-    (deviationData.value?.stations ?? []).map((s) => ({
+const tableData = computed<TableRow[]>(() => {
+    const data: TemperatureDeviationResponse | undefined = deviationData.value;
+    return (data?.stations ?? []).map((s) => ({
         station_name: s.station_name,
         department: s.department,
         region: s.region,
@@ -81,8 +82,8 @@ const tableData = computed<TableRow[]>(() =>
         temperatureMean: s.temperature_mean,
         classeRecente: s.classe_recente,
         anneeDeCreation: new Date(s.date_de_creation).getFullYear(),
-    })),
-);
+    }));
+});
 
 const deviationBadgeColor = (deviation: number) =>
     deviation >= 0 ? "error" : "info";
