@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { TemperatureRecordsGraphParams, TypeRecords } from "~/types/api";
 import GoToDataLink from "../GoToDataLink.vue";
-import ITNCard from "../ImportantInformationSection/ITNCard.vue";
 import Section from "../Section.vue";
 import TemperatureRecord from "../TemperatureRecord.vue";
+import ExtremeCard from "../ExtremeCard.vue";
 
 const { today, yesterday } = useCustomDate();
 
@@ -71,8 +71,8 @@ const yesterdayColdRecordsCount = computed(
                 MIN-MAX DU JOUR
             </h2>
             <div class="flex flex-col gap-2">
-                <ITNCard />
-                <ITNCard />
+                <ExtremeCard hot-cold="hot" :disabled="true" />
+                <ExtremeCard hot-cold="cold" :disabled="true" />
             </div>
             <GoToDataLink :data-url="'/itn'" />
 
