@@ -14,7 +14,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PGPASSWORD="$DB_PASSWORD"
 
 VIEWS_DIR="${ROOT_DIR}/sql/views"
-MATERIALIZED_VIEW_SQL="${ROOT_DIR}/sql/materialized_views/001_mv_quotidienne_realtime.sql"
+MV_QUOTIDIENNE_REALTIME_SQL="${ROOT_DIR}/sql/materialized_views/001_mv_quotidienne_realtime.sql"
+MV_FIRST_TEMPERATURE_DATE_SQL="${ROOT_DIR}/sql/materialized_views/002_mv_first_temperature_date.sql"
 
 apply_sql_file() {
   local sql_path="$1"
@@ -38,7 +39,8 @@ if [[ ! -d "$VIEWS_DIR" ]]; then
   exit 1
 fi
 
-apply_sql_file "$MATERIALIZED_VIEW_SQL"
+apply_sql_file "$MV_QUOTIDIENNE_REALTIME_SQL"
+apply_sql_file "$MV_FIRST_TEMPERATURE_DATE_SQL"
 
 for f in "${VIEWS_DIR}"/*.sql; do
   apply_sql_file "$f"
