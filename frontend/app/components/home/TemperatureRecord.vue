@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Card from "./Card.vue";
+
 interface Props {
     period?: string;
     title: string;
@@ -19,13 +20,13 @@ const props = defineProps<Props>();
                 <span
                     class="text-4xl font-semibold"
                     :class="
-                        props.type === 'hot' ? 'text-red-400' : 'text-blue-600'
+                        props.type === 'hot' ? 'text-rose-600' : 'text-blue-600'
                     "
                     >{{ props.records }}</span
                 >
                 <span
                     :class="
-                        props.type === 'hot' ? 'text-red-400' : 'text-blue-600'
+                        props.type === 'hot' ? 'text-rose-600' : 'text-blue-600'
                     "
                 >
                     records</span
