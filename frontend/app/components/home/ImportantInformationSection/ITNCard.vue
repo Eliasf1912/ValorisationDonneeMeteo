@@ -1,9 +1,48 @@
 <script setup lang="ts">
+import type { NationalIndicatorParams } from "~/types/api";
 import Card from "../Card.vue";
 
-const { yesterdayTemperature, gap, temperatureChangeYearOverYear } =
-    useHomeData();
 const { yesterday, yesterdayLastYear } = useCustomDate();
+
+const yesterdayParams = computed<NationalIndicatorParams>(() => ({
+    date_start: dateToStringYMD(yesterday.value),
+    date_end: dateToStringYMD(yesterday.value),
+    granularity: "day",
+    slice_type: "full",
+}));
+
+const { data: yesterdayData } = useNationalIndicator(yesterdayParams, true);
+
+const yesterdayTemperature = computed(() => {
+    return yesterdayData.value?.time_series[0]?.temperature;
+});
+const gap = computed(() => {
+    const result = yesterdayData.value?.time_series[0];
+    return result ? result.temperature - result.baseline_mean : undefined;
+});
+
+const yesterdayLastYearParams = computed<NationalIndicatorParams>(() => ({
+    date_start: dateToStringYMD(yesterdayLastYear.value),
+    date_end: dateToStringYMD(yesterdayLastYear.value),
+    granularity: "day",
+    slice_type: "full",
+}));
+
+const { data: yesterdayLastYearData } = useNationalIndicator(
+    yesterdayLastYearParams,
+    true,
+);
+
+const yesterdayLastYearTemperature = computed(
+    () => yesterdayLastYearData.value?.time_series[0]?.temperature,
+);
+const temperatureChangeYearOverYear = computed<number | undefined>(() => {
+    if (!yesterdayTemperature.value || !yesterdayLastYearTemperature.value) {
+        return undefined;
+    }
+
+    return yesterdayLastYearTemperature.value - yesterdayTemperature.value;
+});
 </script>
 <template>
     <Card
@@ -38,7 +77,6 @@ const { yesterday, yesterdayLastYear } = useCustomDate();
                 class="text-red-450"
             />
             <span
-                v-if="temperatureChangeYearOverYear"
                 class="text-sm font-semibold"
                 :class="
                     (temperatureChangeYearOverYear ?? 0) <= 0
