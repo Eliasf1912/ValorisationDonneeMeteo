@@ -65,6 +65,30 @@ export function getLastDayOfYear(date: Date): Date {
     return new Date(Date.UTC(date.getUTCFullYear(), 12 - 1, 31));
 }
 
+export function getFirstDayOfMonth(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+export function getLastDayOfMonth(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function isCurrentMonth(date: Date, today: Date = new Date()): boolean {
+    return (
+        date.getFullYear() === today.getFullYear() &&
+        date.getMonth() === today.getMonth()
+    );
+}
+
+export function getLastAvailableDayOfMonth(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return isCurrentMonth(date, today)
+        ? getOneDayBeforeDate(today)
+        : getLastDayOfMonth(date);
+}
+
 export function getOneDayBeforeDate(date: Date): Date {
     return new Date(
         Date.UTC(
