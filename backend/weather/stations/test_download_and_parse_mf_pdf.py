@@ -3,14 +3,15 @@ from download_and_parse_mf_pdf import (
     StationCode,
     StationInfo,
     TemperatureClass,
+    build_classes_csv_lines,
     build_csv_lines,
     build_station_info_from_text,
     date_dd_mm_yyyy_to_iso,
     extract_classes,
+    extract_closure_date,
     extract_creation_date,
     extract_departement,
     extract_id,
-    year_to_iso,
 )
 
 
@@ -33,17 +34,26 @@ def test_extract_id(pdf_url, expected):
 @pytest.mark.parametrize(
     "text, expected",
     [
-        ("Ouverture : 1957", "1957-01-01T00:00:00+00:00"),
         ("Date d'ouverture : 01/01/1957", "1957-01-01T00:00:00+00:00"),
-        ("Date d''ouverture : 15/03/2010", None),
-        ("Mise en service : 1999", "1999-01-01T00:00:00+00:00"),
-        ("OUVERTURE : 2005", "2005-01-01T00:00:00+00:00"),
+        ("DATE D'OUVERTURE : 15/03/2010", "2010-03-15T00:00:00+00:00"),
         ("No creation date here", None),
-        ("Ouverture  :  1980", "1980-01-01T00:00:00+00:00"),
     ],
 )
 def test_extract_creation_date(text, expected):
     assert extract_creation_date(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Date de fermeture : 01/01/1957", "1957-01-01T00:00:00+00:00"),
+        ("DATE DE FERMETURE : 15/03/2010", "2010-03-15T00:00:00+00:00"),
+        ("Date de fermeture : Ouvert", None),
+        ("No closure date here", None),
+    ],
+)
+def test_extract_closure_date(text, expected):
+    assert extract_closure_date(text) == expected
 
 
 @pytest.mark.parametrize(
@@ -56,18 +66,6 @@ def test_extract_creation_date(text, expected):
 )
 def test_date_dd_mm_yyyy_to_iso(date_str, expected):
     assert date_dd_mm_yyyy_to_iso(date_str) == expected
-
-
-@pytest.mark.parametrize(
-    "year_str, expected",
-    [
-        ("1957", "1957-01-01T00:00:00+00:00"),
-        ("2010", "2010-01-01T00:00:00+00:00"),
-        ("1920", "1920-01-01T00:00:00+00:00"),
-    ],
-)
-def test_year_to_iso(year_str, expected):
-    assert year_to_iso(year_str) == expected
 
 
 @pytest.mark.parametrize(
@@ -206,11 +204,13 @@ CLASSE MESURES
 
     actual = {
         "creation_date": extract_creation_date(text),
+        "closure_date": extract_closure_date(text),
         "departement": extract_departement(text),
         "classes": extract_classes(text),
     }
     expected = {
         "creation_date": "1920-09-01T00:00:00+00:00",
+        "closure_date": None,
         "departement": {"nom": "BOUCHES-DU-RHONE", "code": "13"},
         "classes": [
             TemperatureClass(classe="1", debut="1999-09-01T00:00:00+00:00", fin=None)
@@ -227,6 +227,7 @@ def test_build_csv_lines_single_class():
         url="https://example.com/file.pdf",
         departement="75",
         creation_date="1999-01-01T00:00:00+00:00",
+        closure_date="2020-12-31T00:00:00+00:00",
         classes_temperature=[
             TemperatureClass(classe="1", debut="1999-09-01T00:00:00+00:00", fin=None)
         ],
@@ -238,6 +239,7 @@ def test_build_csv_lines_single_class():
             "https://example.com/file.pdf",
             "75",
             "1999-01-01T00:00:00+00:00",
+            "2020-12-31T00:00:00+00:00",
             "1",
             "1999-09-01T00:00:00+00:00",
             None,
@@ -253,6 +255,7 @@ def test_build_csv_lines_multiple_classes():
         url="https://example.com/file.pdf",
         departement="06",
         creation_date="1998-01-01T00:00:00+00:00",
+        closure_date=None,
         classes_temperature=[
             TemperatureClass(classe="1", debut="2000-01-01T00:00:00+00:00", fin=None),
             TemperatureClass(
@@ -269,6 +272,7 @@ def test_build_csv_lines_multiple_classes():
             "https://example.com/file.pdf",
             "06",
             "1998-01-01T00:00:00+00:00",
+            None,
             "1",
             "2000-01-01T00:00:00+00:00",
             None,
@@ -278,6 +282,7 @@ def test_build_csv_lines_multiple_classes():
             "https://example.com/file.pdf",
             "06",
             "1998-01-01T00:00:00+00:00",
+            None,
             "2",
             "2015-03-15T00:00:00+00:00",
             "2020-06-30T00:00:00+00:00",
@@ -293,12 +298,55 @@ def test_build_csv_lines_with_none_values():
         url="https://example.com/file.pdf",
         departement=None,
         creation_date=None,
+        closure_date=None,
         classes_temperature=[TemperatureClass(classe=None, debut=None, fin=None)],
     )
     result = build_csv_lines(station, info)
     expected = [
-        ["14137001", "https://example.com/file.pdf", None, None, None, None, None]
+        ["14137001", "https://example.com/file.pdf", None, None, None, None, None, None]
     ]
+    assert result == expected
+
+
+def test_build_classes_csv_lines_multiple_classes():
+    station = StationCode("06088001")
+    info = StationInfo(
+        station_code=station,
+        url="https://example.com/file.pdf",
+        departement="06",
+        creation_date="1998-01-01T00:00:00+00:00",
+        closure_date=None,
+        classes_temperature=[
+            TemperatureClass(classe="1", debut="2000-01-01T00:00:00+00:00", fin=None),
+            TemperatureClass(
+                classe="2",
+                debut="2015-03-15T00:00:00+00:00",
+                fin="2020-06-30T00:00:00+00:00",
+            ),
+        ],
+    )
+    result = build_classes_csv_lines(station, info)
+    expected = [
+        ["06088001", "1", "2000-01-01T00:00:00+00:00", None],
+        ["06088001", "2", "2015-03-15T00:00:00+00:00", "2020-06-30T00:00:00+00:00"],
+    ]
+    assert result == expected
+
+
+def test_build_lifecycle_csv_line():
+    station = StationCode("06088001")
+    info = StationInfo(
+        station_code=station,
+        url="https://example.com/file.pdf",
+        departement="06",
+        creation_date="1998-01-01T00:00:00+00:00",
+        closure_date="2020-06-30T00:00:00+00:00",
+        classes_temperature=[
+            TemperatureClass(classe="1", debut="2000-01-01T00:00:00+00:00", fin=None)
+        ],
+    )
+    result = [station, info.creation_date, info.closure_date]
+    expected = ["06088001", "1998-01-01T00:00:00+00:00", "2020-06-30T00:00:00+00:00"]
     assert result == expected
 
 
@@ -312,6 +360,7 @@ def test_build_station_info_from_text_with_merignane_text_example():
         url=pdf_url,
         departement="13",
         creation_date="1920-09-01T00:00:00+00:00",
+        closure_date=None,
         classes_temperature=[
             TemperatureClass(classe="1", debut="1999-09-01T00:00:00+00:00", fin=None)
         ],

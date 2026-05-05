@@ -39,6 +39,7 @@ class StationInfo:
     url: str
     departement: str | None
     creation_date: str | None
+    closure_date: str | None
     classes_temperature: list[TemperatureClass]
 
 
@@ -109,6 +110,7 @@ def get_pdf_urls(*, script_dir: Path, update: bool = False) -> list[str]:
         return load_cached_pdf_urls(cache_file_path)
 
     pdf_urls = fetch_urls(api_url)
+    pdf_urls = sorted(pdf_urls)
     save_pdf_urls(pdf_urls, cache_file_path)
     return pdf_urls
 
@@ -120,6 +122,7 @@ def build_station_info_from_text(
 ) -> StationInfo:
     classes = extract_classes(text)
     creation_date = extract_creation_date(text)
+    closure_date = extract_closure_date(text)
     departement_info = extract_departement(text)
 
     return StationInfo(
@@ -127,6 +130,7 @@ def build_station_info_from_text(
         url=pdf_url,
         departement=departement_info["code"],
         creation_date=creation_date,
+        closure_date=closure_date,
         classes_temperature=classes,
     )
 
@@ -243,8 +247,9 @@ def get_station_info(
         return StationInfo(
             station_code=station_id,
             url=pdf_url,
-            departement="failed",
-            creation_date="failed",
+            departement=None,
+            creation_date=None,
+            closure_date=None,
             classes_temperature=[],
         )
 
@@ -310,44 +315,21 @@ def date_dd_mm_yyyy_to_iso(date_str: str) -> str:
     return f"{year}-{month}-{day}T00:00:00+00:00"
 
 
-def year_to_iso(year_str: str) -> str:
-    """
-    Convert year string to ISO 8601 format with +00:00.
-
-    Args:
-        year_str: Year string (e.g., "1957")
-
-    Returns:
-        ISO 8601 date string with +00:00 (e.g., "1957-01-01T00:00:00+00:00")
-    """
-    return f"{year_str}-01-01T00:00:00+00:00"
+def extract_labeled_date(text: str, label_pattern: str) -> str | None:
+    match = re.search(
+        rf"{label_pattern}\s*:\s*(\d{{2}}/\d{{2}}/\d{{4}})",
+        text,
+        re.IGNORECASE,
+    )
+    return date_dd_mm_yyyy_to_iso(match.group(1)) if match else None
 
 
 def extract_creation_date(text: str) -> str | None:
-    # -------------------------
-    # Année et mois de création (returned as ISO string with +00:00)
-    # -------------------------
-    # Souvent sous :
-    # "Ouverture : 1957"
-    # "Date d'ouverture : 01/01/1957"
-    patterns = [
-        # "Ouverture : 1957"
-        (r"Ouverture\s*:\s*(\d{4})", "year"),
-        # "Date d'ouverture : 01/01/1957"
-        (r"Date d['']ouverture\s*:\s*(\d{2}/\d{2}/\d{4})", "dmy"),
-        # "Mise en service : 1957"
-        (r"Mise en service\s*:\s*(\d{4})", "year"),
-    ]
+    return extract_labeled_date(text, r"Date d['’]ouverture")
 
-    for pattern, fmt in patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if not match:
-            continue
-        if fmt == "dmy":
-            return date_dd_mm_yyyy_to_iso(match.group(1))
-        if fmt == "year":
-            return year_to_iso(match.group(1))
-    return None
+
+def extract_closure_date(text: str) -> str | None:
+    return extract_labeled_date(text, r"Date de fermeture")
 
 
 def extract_departement(text: str) -> dict:
@@ -383,14 +365,11 @@ def extract_classes(text: str) -> list[TemperatureClass]:
         )
 
         for c, d, f in class_matches:
-            debut_iso = date_dd_mm_yyyy_to_iso(d) if d else None
+            debut_iso = date_dd_mm_yyyy_to_iso(d)
             fin_iso = date_dd_mm_yyyy_to_iso(f) if f else None
             all_classes.append(TemperatureClass(classe=c, debut=debut_iso, fin=fin_iso))
 
-    if not all_classes:
-        return [TemperatureClass()]
-
-    return all_classes
+    return sorted(all_classes, key=lambda t: t.debut)
 
 
 def build_csv_lines(
@@ -401,20 +380,55 @@ def build_csv_lines(
         info.url,
         info.departement,
         info.creation_date,
+        info.closure_date,
     ]
     classes = info.classes_temperature
 
     return [base_row + [c.classe, c.debut, c.fin] for c in classes]
 
 
+def build_classes_csv_lines(
+    station_id: StationCode,
+    info: StationInfo,
+) -> list[list[str | None]]:
+    return [[station_id, c.classe, c.debut, c.fin] for c in info.classes_temperature]
+
+
 def prepare_csv_rows(
     data_dict: dict[StationCode, StationInfo],
 ) -> list[list[str | None]]:
-    header = ["id", "url", "departement", "creation_date", "classe", "debut", "fin"]
+    header = [
+        "id",
+        "url",
+        "departement",
+        "creation_date",
+        "closure_date",
+        "classe",
+        "debut",
+        "fin",
+    ]
     rows: list[list[str | None]] = [header]
     for station_id, info in data_dict.items():
         rows.extend(build_csv_lines(station_id, info))
     return rows
+
+
+def prepare_classes_csv_rows(
+    data_dict: dict[StationCode, StationInfo],
+) -> list[list[str | None]]:
+    rows: list[list[str | None]] = [["id", "classe", "debut", "fin"]]
+    for station_id, info in data_dict.items():
+        rows.extend(build_classes_csv_lines(station_id, info))
+    return rows
+
+
+def prepare_lifecycle_csv_rows(
+    data_dict: dict[StationCode, StationInfo],
+) -> list[list[str | None]]:
+    return [["id", "creation_date", "closure_date"]] + [
+        [station_id, info.creation_date, info.closure_date]
+        for station_id, info in data_dict.items()
+    ]
 
 
 def ensure_directory_exists(file_path: Path) -> None:
@@ -434,6 +448,22 @@ def dict_to_csv(data_dict: dict[StationCode, StationInfo], csv_file_path: Path) 
     save_csv(rows, csv_file_path)
 
 
+def dict_to_classes_csv(
+    data_dict: dict[StationCode, StationInfo],
+    csv_file_path: Path,
+) -> None:
+    rows = prepare_classes_csv_rows(data_dict)
+    save_csv(rows, csv_file_path)
+
+
+def dict_to_lifecycle_csv(
+    data_dict: dict[StationCode, StationInfo],
+    csv_file_path: Path,
+) -> None:
+    rows = prepare_lifecycle_csv_rows(data_dict)
+    save_csv(rows, csv_file_path)
+
+
 def serialize_data_dict(data_dict: dict[StationCode, StationInfo]) -> dict:
     return {
         station_id: {
@@ -441,6 +471,7 @@ def serialize_data_dict(data_dict: dict[StationCode, StationInfo]) -> dict:
             "url": info.url,
             "departement": info.departement,
             "creation_date": info.creation_date,
+            "closure_date": info.closure_date,
             "classes_temperature": [asdict(tc) for tc in info.classes_temperature],
         }
         for station_id, info in data_dict.items()
@@ -545,6 +576,8 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     dict_to_json(data_dict, output_dir / "stations_data.json")
     dict_to_csv(data_dict, output_dir / "stations_data.csv")
+    dict_to_classes_csv(data_dict, output_dir / "stations_classes.csv")
+    dict_to_lifecycle_csv(data_dict, output_dir / "stations_lifecycle.csv")
 
     logger.info("Data saved to %s", output_dir)
 
