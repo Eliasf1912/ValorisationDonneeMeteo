@@ -184,10 +184,13 @@ const calendarOption = computed<ECOption | EChartsOption>(() => {
 
     if (!data) return {} as ECOption;
 
+    const vertical = !props.adapter.isCalendarHeatmap?.value;
+
     return useDeviationCalendarOption(
         data,
         props.adapter.granularity.value,
         selectedStationsAndNational.value,
+        vertical,
     );
 });
 
