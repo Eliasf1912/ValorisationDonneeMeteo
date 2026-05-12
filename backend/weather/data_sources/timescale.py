@@ -255,7 +255,7 @@ class TimescaleNationalIndicatorAbsoluteExtremesDataSource(
 ):
     """
     Lit les extremes absolus historiques de l'ITN depuis les vues matérialisées
-    mv_itn_absolute_extremes_daily/monthly/yearly.
+    v_itn_absolute_extremes_daily/monthly/yearly.
     Ces MV sont rafraîchies via pg_cron toutes les 6 min (même job que mv_quotidienne_realtime).
     """
 

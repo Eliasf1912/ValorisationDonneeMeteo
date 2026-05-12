@@ -143,7 +143,7 @@ class ITNAbsoluteExtremesDaily(models.Model):
 
     class Meta:
         managed = False
-        db_table = "mv_itn_absolute_extremes_daily"
+        db_table = "v_itn_absolute_extremes_daily"
         unique_together = ("month", "day_of_month")
 
     def __str__(self) -> str:
@@ -157,7 +157,7 @@ class ITNAbsoluteExtremesMonthly(models.Model):
 
     class Meta:
         managed = False
-        db_table = "mv_itn_absolute_extremes_monthly"
+        db_table = "v_itn_absolute_extremes_monthly"
 
     def __str__(self) -> str:
         return f"month={self.month:02d}"
@@ -170,7 +170,7 @@ class ITNAbsoluteExtremesYearly(models.Model):
 
     class Meta:
         managed = False
-        db_table = "mv_itn_absolute_extremes_yearly"
+        db_table = "v_itn_absolute_extremes_yearly"
 
     def __str__(self) -> str:
         return f"min={self.absolute_min} max={self.absolute_max}"

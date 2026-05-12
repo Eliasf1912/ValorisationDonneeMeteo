@@ -30,6 +30,13 @@ def insert_station(
                  %(departement)s, 'horaire',
                  '1', 1,
                  %(lon)s, %(lat)s, %(alt)s, '1')
+            ON CONFLICT ("id", "frequence") DO UPDATE SET
+                "updatedAt" = EXCLUDED."updatedAt",
+                "nom" = EXCLUDED."nom",
+                "departement" = EXCLUDED."departement",
+                "lon" = EXCLUDED."lon",
+                "lat" = EXCLUDED."lat",
+                "alt" = EXCLUDED."alt"
             """,
             {
                 "created": now,

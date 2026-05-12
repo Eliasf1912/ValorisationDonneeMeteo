@@ -5,10 +5,7 @@ SELECT cron.schedule(
    '*/6 * * * *',
    $$
    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_quotidienne_realtime;
-   REFRESH MATERIALIZED VIEW mv_itn_daily_all_years;
-   REFRESH MATERIALIZED VIEW mv_itn_daily_all_years_with_feb29;
-   REFRESH MATERIALIZED VIEW mv_itn_absolute_extremes_daily;
-   REFRESH MATERIALIZED VIEW mv_itn_absolute_extremes_monthly;
-   REFRESH MATERIALIZED VIEW mv_itn_absolute_extremes_yearly;
+   REFRESH MATERIALIZED VIEW CONCURRENTLY mv_mensuelle_realtime;
+   REFRESH MATERIALIZED VIEW CONCURRENTLY mv_itn_daily_all_years;
    $$
 );

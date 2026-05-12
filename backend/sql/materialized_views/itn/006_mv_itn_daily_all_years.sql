@@ -42,7 +42,7 @@ SELECT
 FROM normalized n
 GROUP BY n.date
 HAVING COUNT(DISTINCT n.station_code) >= 29
-ORDER BY n.day;
+ORDER BY n.date;
 
 CREATE UNIQUE INDEX idx_mv_itn_daily_all_years_date
     ON mv_itn_daily_all_years (date);
