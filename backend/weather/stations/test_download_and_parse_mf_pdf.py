@@ -1,5 +1,6 @@
 import pytest
-from download_and_parse_mf_pdf import (
+
+from .download_and_parse_mf_pdf import (
     StationCode,
     StationInfo,
     TemperatureClass,
@@ -161,7 +162,7 @@ Temperature 1 Nr35B 01/01/2021 3 07/01/2026
 
 def test_extract_classes_no_match():
     result = extract_classes("No quality data here")
-    expected = [TemperatureClass(classe=None, debut=None, fin=None)]
+    expected = []
     assert result == expected
 
 
