@@ -23,7 +23,7 @@ export function dateToStringDMY(date: Date): string {
 
 /** Returns the first day of the year for the given date as date */
 export function getFirstDayOfYear(date: Date): Date {
-    return new Date(date.getUTCFullYear(), 1 - 1, 1, 0, 0, 0, 0);
+    return new Date(Date.UTC(date.getUTCFullYear(), 1 - 1, 1, 0, 0, 0, 0));
 }
 
 /** Returns the first day of the year for the given date as date */
