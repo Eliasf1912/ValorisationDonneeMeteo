@@ -9,7 +9,7 @@ WITH monthly_itn AS (
         month,
         AVG(itn) AS monthly_mean
     FROM v_itn_daily_all_years_with_feb29
-    WHERE NOT is_fictive
+    WHERE NOT is_fictive AND make_date(year, month, 1) < date_trunc('month', NOW())
     GROUP BY year, month
 )
 SELECT

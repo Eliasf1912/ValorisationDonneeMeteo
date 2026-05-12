@@ -8,7 +8,7 @@ WITH yearly_itn AS (
         year,
         AVG(itn) AS yearly_mean
     FROM v_itn_daily_all_years_with_feb29
-    WHERE NOT is_fictive
+    WHERE NOT is_fictive AND year < EXTRACT(YEAR FROM NOW())
     GROUP BY year
 )
 SELECT
