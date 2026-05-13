@@ -73,7 +73,7 @@ async function exportCSV() {
             :description="heroData.description"
         />
 
-        <ChartLayout :has-sidebar="true">
+        <ChartLayout :has-sidebar="true" chart-height="md:h-170">
             <template #select-bar>
                 <SelectBar :adapter="selectBarAdapter" />
             </template>
