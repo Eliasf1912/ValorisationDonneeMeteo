@@ -34,7 +34,9 @@ const {
     dateEnd,
     ordering,
     pending,
+    hasActiveFilters,
 } = storeToRefs(store);
+const { resetFilters } = store;
 
 const { setOrdering } = store;
 
@@ -168,6 +170,12 @@ const columns = [
                         <USkeleton class="h-4 w-full" />
                     </td>
                 </tr>
+            </template>
+            <template #empty>
+                <TableEmptyState
+                    :has-active-filters="hasActiveFilters"
+                    @reset="resetFilters"
+                />
             </template>
         </UTable>
 
