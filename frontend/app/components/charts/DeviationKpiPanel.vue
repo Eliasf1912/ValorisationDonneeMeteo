@@ -3,6 +3,7 @@
         <Card
             title="Écart à la normale moyen en France"
             :tooltip-text="`Écart à la normale moyen en France métropolitaine entre le ${formattedStart} et le ${formattedEnd}.`"
+            :loading="pending"
         >
             <template #kpi>
                 <p
@@ -26,6 +27,7 @@
         <Card
             title="Nombre de jours au-dessus des normales"
             :tooltip-text="`Nombre de jours, entre le ${formattedStart} et le ${formattedEnd}, pour lesquels l'écart à la normale en France métropolitaine est supérieur à 0.`"
+            :loading="pending"
         >
             <template #kpi>
                 <p class="font-semibold text-4xl mb-1 text-red-400">
@@ -41,6 +43,7 @@
         <Card
             title="Nombre de jours en-dessous des normales"
             :tooltip-text="`Nombre de jours, entre le ${formattedStart} et le ${formattedEnd} pour lesquels l'écart à la normale en France métropolitaine est inférieur à 0.`"
+            :loading="pending"
         >
             <template #kpi>
                 <p class="font-semibold text-4xl mb-1 text-blue-400">
@@ -61,6 +64,7 @@
             hot-label="chauds"
             cold-label="froids"
             unit-label="jours"
+            :pending="pending"
         />
     </div>
 </template>
@@ -83,5 +87,5 @@ const params = computed<NationalIndicatorKpiParams>(() => ({
     date_end: dateToStringYMD(pickedDateEnd.value),
 }));
 
-const { data: kpi } = useNationalIndicatorKpi(params);
+const { data: kpi, pending } = useNationalIndicatorKpi(params);
 </script>
