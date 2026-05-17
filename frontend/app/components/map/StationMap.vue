@@ -65,10 +65,10 @@ const props = withDefaults(
         };
     }>(),
     {
-        height: "800px",
+        height: "600px",
         aspectRatio: undefined,
         showControls: true,
-        fitPadding: () => ({ top: -10, right: 50, bottom: 50, left: 40 }),
+        fitPadding: () => ({ top: 0, right: 50, bottom: 50, left: 40 }),
     },
 );
 
@@ -339,6 +339,7 @@ const tooltipBg = computed(() => mapColors.value.background);
 <style scoped>
 :deep(.station-map-popup .maplibregl-popup-content) {
     background: v-bind(tooltipBg);
+    color: var(--ui-text-highlighted);
 }
 
 :deep(.station-map-popup .maplibregl-popup-tip) {
