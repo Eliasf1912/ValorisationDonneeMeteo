@@ -120,7 +120,7 @@ function exportAsHTML() {
     const scriptTag = "script";
     const tooltipFormatterScript = exportConfig.htmlTooltipFormatter
         ? `[options.tooltip].flat().filter(Boolean).forEach(function(t){ t.formatter = ${exportConfig.htmlTooltipFormatter}; });`
-        : "";
+        : `chart.setOption({ tooltip: { valueFormatter: function(v) { return typeof v === 'number' ? v.toFixed(1) : v; } } });`;
     const html = `<!DOCTYPE html>
 <html>
 <head>
