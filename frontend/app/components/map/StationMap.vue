@@ -234,7 +234,7 @@ onMounted(async () => {
                     btn.type = "button";
                     btn.title = "Réinitialiser la vue";
                     btn.setAttribute("aria-label", "Réinitialiser la vue");
-                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="29" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 7V3h4M17 7V3h-4M3 13v4h4M17 13v4h-4" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="29" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 7V3h4M17 7V3h-4M3 13v4h4M17 13v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
                     btn.onclick = () =>
                         m.fitBounds(
                             [
@@ -344,5 +344,19 @@ const tooltipBg = computed(() => mapColors.value.background);
 
 :deep(.station-map-popup .maplibregl-popup-tip) {
     display: none;
+}
+
+:deep(.maplibregl-ctrl-group) {
+    background: var(--ui-bg) !important;
+    box-shadow: none !important;
+    outline: 1px solid var(--ui-border-accented);
+}
+
+:deep(.maplibregl-ctrl-group button) {
+    color: var(--ui-text);
+}
+
+:deep(.maplibregl-ctrl-group button + button) {
+    border-top-color: var(--ui-border-accented) !important;
 }
 </style>
