@@ -63,7 +63,7 @@ const items = computed<NavigationMenuItem[]>(() => [
         label: "À propos",
         children: [
             {
-                label: "Qui sommes nous ?",
+                label: "Qui sommes-nous ?",
                 to: "/a-propos/qui-sommes-nous",
                 icon: "i-lucide-users",
                 active: route.path.startsWith("/a-propos/qui-sommes-nous"),
