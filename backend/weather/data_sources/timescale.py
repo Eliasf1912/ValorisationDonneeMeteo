@@ -5,8 +5,8 @@ from collections import defaultdict
 from typing import Any
 
 from django.db import connection
-from django.db.models import OuterRef, Subquery
-from django.db.models.functions import ExtractDay, ExtractMonth
+from django.db.models import IntegerField, OuterRef, Subquery
+from django.db.models.functions import Cast, ExtractDay, ExtractMonth
 
 from weather.models import (
     BaselineStationDailyMean19912020,
@@ -341,8 +341,8 @@ class TimescaleTemperatureDeviationDailyDataSource(
 
         rows = (
             qs.annotate(
-                month=ExtractMonth("date"),
-                day=ExtractDay("date"),
+                month=Cast(ExtractMonth("date"), IntegerField()),
+                day=Cast(ExtractDay("date"), IntegerField()),
             )
             .annotate(
                 baseline_mean=Subquery(baseline_sq),
