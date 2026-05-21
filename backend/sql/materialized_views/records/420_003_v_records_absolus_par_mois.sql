@@ -4,14 +4,16 @@ WITH ranked AS (
         m.station_code,
         date,
         txx,
+        txx_date,
         tnn,
+        tnn_date,
         ROW_NUMBER() OVER (
             PARTITION BY m.station_code, EXTRACT(MONTH FROM date)::int
-            ORDER BY txx DESC NULLS LAST, date ASC
+            ORDER BY txx DESC NULLS LAST, txx_date ASC
         ) AS rn_txx_max,
         ROW_NUMBER() OVER (
             PARTITION BY m.station_code, EXTRACT(MONTH FROM date)::int
-            ORDER BY tnn ASC NULLS LAST, date ASC
+            ORDER BY tnn ASC NULLS LAST, tnn_date ASC
         ) AS rn_tnn_min
     FROM public.v_mensuelle AS m
         INNER JOIN public.v_station_records AS s
@@ -20,10 +22,10 @@ WITH ranked AS (
 )
 SELECT
     station_code,
-    EXTRACT(MONTH FROM date)::int AS month,
-    MAX(CASE WHEN rn_txx_max = 1 THEN txx END) AS txx_max,
-    MAX(CASE WHEN rn_txx_max = 1 THEN date END) AS txx_max_date,
-    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn END) AS tnn_min,
-    MAX(CASE WHEN rn_tnn_min = 1 THEN date END) AS tnn_min_date
+    EXTRACT(MONTH FROM date)::int                   AS month,
+    MAX(CASE WHEN rn_txx_max = 1 THEN txx END)      AS txx_max,
+    MAX(CASE WHEN rn_txx_max = 1 THEN txx_date END) AS txx_max_date,
+    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn END)      AS tnn_min,
+    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn_date END) AS tnn_min_date
 FROM ranked
 GROUP BY station_code, EXTRACT(MONTH FROM date)::int;

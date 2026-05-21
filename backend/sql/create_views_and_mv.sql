@@ -233,23 +233,46 @@ SELECT
 FROM combined_quotidienne
 WHERE tntxm IS NOT NULL;
 
+DROP VIEW IF EXISTS public.v_mensuelle_realtime CASCADE;
 CREATE OR REPLACE VIEW public.v_mensuelle_realtime AS
+WITH ranked AS (
+    SELECT
+        station_code,
+        date_trunc('month', date) AS month_date,
+        date                      AS daily_date,
+        tn,
+        tx,
+        tntxm,
+        ROW_NUMBER() OVER (
+            PARTITION BY station_code, date_trunc('month', date)
+            ORDER BY tn ASC NULLS LAST, date ASC
+        ) AS rn_tn_min,
+        ROW_NUMBER() OVER (
+            PARTITION BY station_code, date_trunc('month', date)
+            ORDER BY tx DESC NULLS LAST, date ASC
+        ) AS rn_tx_max
+    FROM public.v_quotidienne
+    WHERE date >= date_trunc('month', now()) - interval '2 months'
+)
 SELECT
-    "station_code" AS station_code,
-    date_trunc('month', "date") AS date,
-    MIN("tn") AS tnn,
-    MAX("tx") AS txx,
-    ROUND(AVG("tntxm")::numeric, 1) AS tmm
-FROM public.v_quotidienne
-WHERE "date" >= date_trunc('month', now()) - interval '2 months'
-GROUP BY station_code, date_trunc('month', "date");
+    station_code,
+    month_date                                                          AS date,
+    MIN(tn)                                                             AS tnn,
+    MAX(CASE WHEN rn_tn_min = 1 AND tn IS NOT NULL THEN daily_date END) AS tnn_date,
+    MAX(tx)                                                             AS txx,
+    MAX(CASE WHEN rn_tx_max = 1 AND tx IS NOT NULL THEN daily_date END) AS txx_date,
+    ROUND(AVG(tntxm)::numeric, 1)                                       AS tmm
+FROM ranked
+GROUP BY station_code, month_date;
 
 CREATE MATERIALIZED VIEW public.mv_mensuelle_realtime AS
 SELECT
     station_code,
     date,
     tnn,
+    tnn_date,
     txx,
+    txx_date,
     tmm
 FROM public.v_mensuelle_realtime
 ORDER BY station_code, date;
@@ -260,24 +283,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS mv_mensuelle_realtime_uq
 CREATE OR REPLACE VIEW public.v_mensuelle AS
 WITH mensuelle_climato AS (
     SELECT
-        "NUM_POSTE" AS station_code,
-        "AAAAMM" AS date,
-        "TNAB" AS tnn,
-        "TXAB" AS txx,
-        "TM" AS tmm
+        "NUM_POSTE"                                                 AS station_code,
+        "AAAAMM"                                                    AS date,
+        "TNAB"                                                      AS tnn,
+        ("AAAAMM" + ("TNDAT" - 1) * interval '1 day')::timestamp(3) AS tnn_date,
+        "TXAB"                                                      AS txx,
+        ("AAAAMM" + ("TXDAT" - 1) * interval '1 day')::timestamp(3) AS txx_date,
+        "TM"                                                        AS tmm
     FROM public."Mensuelle"
     WHERE "AAAAMM" < date_trunc('month', now()) - interval '2 months'
 ),
 combined_mensuelle AS (
-    SELECT station_code, date, tnn, txx, tmm FROM public.mv_mensuelle_realtime
+    SELECT station_code, date, tnn, tnn_date, txx, txx_date, tmm FROM public.mv_mensuelle_realtime
     UNION ALL
-    SELECT station_code, date, tnn, txx, tmm FROM mensuelle_climato
+    SELECT station_code, date, tnn, tnn_date, txx, txx_date, tmm FROM mensuelle_climato
 )
 SELECT
     station_code,
     date,
     tnn,
+    tnn_date,
     txx,
+    txx_date,
     tmm
 FROM combined_mensuelle;
 
@@ -307,14 +334,16 @@ WITH ranked AS (
         m.station_code,
         date,
         txx,
+        txx_date,
         tnn,
+        tnn_date,
         ROW_NUMBER() OVER (
             PARTITION BY m.station_code, EXTRACT(MONTH FROM date)::int
-            ORDER BY txx DESC NULLS LAST, date ASC
+            ORDER BY txx DESC NULLS LAST, txx_date ASC
         ) AS rn_txx_max,
         ROW_NUMBER() OVER (
             PARTITION BY m.station_code, EXTRACT(MONTH FROM date)::int
-            ORDER BY tnn ASC NULLS LAST, date ASC
+            ORDER BY tnn ASC NULLS LAST, tnn_date ASC
         ) AS rn_tnn_min
     FROM public.v_mensuelle AS m
         INNER JOIN public.v_station_records AS s
@@ -323,11 +352,11 @@ WITH ranked AS (
 )
 SELECT
     station_code,
-    EXTRACT(MONTH FROM date)::int AS month,
-    MAX(CASE WHEN rn_txx_max = 1 THEN txx END) AS txx_max,
-    MAX(CASE WHEN rn_txx_max = 1 THEN date END) AS txx_max_date,
-    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn END) AS tnn_min,
-    MAX(CASE WHEN rn_tnn_min = 1 THEN date END) AS tnn_min_date
+    EXTRACT(MONTH FROM date)::int                   AS month,
+    MAX(CASE WHEN rn_txx_max = 1 THEN txx END)      AS txx_max,
+    MAX(CASE WHEN rn_txx_max = 1 THEN txx_date END) AS txx_max_date,
+    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn END)      AS tnn_min,
+    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn_date END) AS tnn_min_date
 FROM ranked
 GROUP BY station_code, EXTRACT(MONTH FROM date)::int;
 
@@ -1263,33 +1292,3 @@ ON public.mv_records_battus (record_type, period_type, period_value);
 
 CREATE INDEX IF NOT EXISTS idx_mv_records_battus_station
 ON public.mv_records_battus (station_code);
-
-CREATE OR REPLACE VIEW public.v_records_absolus_par_mois AS
-WITH ranked AS (
-    SELECT
-        m.station_code,
-        date,
-        txx,
-        tnn,
-        ROW_NUMBER() OVER (
-            PARTITION BY m.station_code, EXTRACT(MONTH FROM date)::int
-            ORDER BY txx DESC NULLS LAST, date ASC
-        ) AS rn_txx_max,
-        ROW_NUMBER() OVER (
-            PARTITION BY m.station_code, EXTRACT(MONTH FROM date)::int
-            ORDER BY tnn ASC NULLS LAST, date ASC
-        ) AS rn_tnn_min
-    FROM public.v_mensuelle AS m
-        INNER JOIN public.v_station_records AS s
-            ON m.station_code = s.station_code
-    WHERE txx IS NOT NULL OR tnn IS NOT NULL
-)
-SELECT
-    station_code,
-    EXTRACT(MONTH FROM date)::int AS month,
-    MAX(CASE WHEN rn_txx_max = 1 THEN txx END) AS txx_max,
-    MAX(CASE WHEN rn_txx_max = 1 THEN date END) AS txx_max_date,
-    MAX(CASE WHEN rn_tnn_min = 1 THEN tnn END) AS tnn_min,
-    MAX(CASE WHEN rn_tnn_min = 1 THEN date END) AS tnn_min_date
-FROM ranked
-GROUP BY station_code, EXTRACT(MONTH FROM date)::int;

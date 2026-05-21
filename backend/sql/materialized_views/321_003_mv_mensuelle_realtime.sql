@@ -5,7 +5,9 @@ SELECT
     station_code,
     date,
     tnn,
+    tnn_date,
     txx,
+    txx_date,
     tmm
 FROM public.v_mensuelle_realtime
 ORDER BY station_code, date;
