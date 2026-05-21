@@ -127,9 +127,6 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
     v_quotidienne_realtime_sql = (
         BASE_DIR / "sql" / "materialized_views" / "300_001_v_quotidienne_realtime.sql"
     ).read_text()
-    mv_quotidienne_realtime_sql = (
-        BASE_DIR / "sql" / "materialized_views" / "301_001_mv_quotidienne_realtime.sql"
-    ).read_text()
     v_quotidienne = (
         BASE_DIR / "sql" / "views" / "310_002_v_quotidienne.sql"
     ).read_text()
@@ -236,7 +233,18 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
             """)
             cur.execute(v_station_qualifiee_hexagone_sql)
             cur.execute(v_quotidienne_realtime_sql)
-            cur.execute(mv_quotidienne_realtime_sql)
+            cur.execute(
+                get_drop_mv_or_table_sql(mv_or_table_name="mv_quotidienne_realtime")
+            )
+            cur.execute("""
+                CREATE TABLE public.mv_quotidienne_realtime (
+                    station_code char(8),
+                    date         timestamp(3),
+                    tntxm        numeric,
+                    tn           numeric,
+                    tx           numeric
+                );
+            """)
             cur.execute(v_quotidienne)
             cur.execute(v_station_classe_1234)
             cur.execute(v_station_classe_123_sql)
