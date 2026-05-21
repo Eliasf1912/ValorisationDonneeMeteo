@@ -91,6 +91,8 @@ const lastYearColdRecordsCount = computed(
                 title="Records de chaleur mensuels"
                 tooltip-text="Nombre de stations ayant battu un record mensuel de chaleur aujourd'hui"
                 compare-to="même jour l'an dernier"
+                export-button-title="Exporter la liste des records de chaleur"
+                period-type="today"
             />
             <TemperatureRecord
                 :records="coldRecordsCount"
@@ -99,6 +101,8 @@ const lastYearColdRecordsCount = computed(
                 title="Records de froid mensuels"
                 tooltip-text="Nombre de stations ayant battu un record mensuel de froid aujourd'hui"
                 compare-to="même jour l'an dernier"
+                export-button-title="Exporter la liste des records de froid"
+                period-type="today"
             />
         </div>
         <GoToDataLink :data-url="'/temperature/records?preset=today#table'" />

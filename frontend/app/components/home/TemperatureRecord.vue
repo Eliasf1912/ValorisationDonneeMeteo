@@ -6,16 +6,53 @@ interface Props {
     title: string;
     tooltipText: string;
     compareTo: string;
-    type?: "hot" | "cold";
+    type: "hot" | "cold";
     records: number;
     difference?: number;
+    temperatureTitle?: string;
+    exportButtonTitle?: string;
+    periodType: "today" | "month";
 }
 
 const props = defineProps<Props>();
+const { exportRecords } = useExportRecordsBattus();
+const { yesterday, yesterdayLess30Days } = useCustomDate();
+
+const exportCsvParams = computed(() => {
+    const today = new Date();
+    const dateStart =
+        props.periodType === "today"
+            ? dateToStringYMD(today)
+            : dateToStringYMD(yesterdayLess30Days.value);
+    const dateEnd =
+        props.periodType === "today"
+            ? dateToStringYMD(today)
+            : dateToStringYMD(yesterday.value);
+
+    return {
+        dateStart,
+        dateEnd,
+    };
+});
+
+function exportInCsv() {
+    const params = exportCsvParams.value;
+    exportRecords(
+        props.type,
+        params.dateStart,
+        params.dateEnd,
+        props.periodType === "today" ? "all_time" : "month",
+    );
+}
 </script>
 <template>
     <div class="min-w-56">
-        <Card :title="props.title" :tooltip-text="props.tooltipText">
+        <Card
+            :title="props.title"
+            :tooltip-text="props.tooltipText"
+            :export-button-title="props.exportButtonTitle"
+            @export="exportInCsv"
+        >
             <template #kpi>
                 <span
                     class="text-4xl font-semibold"
