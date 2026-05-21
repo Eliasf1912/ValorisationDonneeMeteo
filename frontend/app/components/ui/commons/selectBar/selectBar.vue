@@ -25,8 +25,14 @@ const localStartDate = props.adapter.pickedDateStart;
 const localEndDate = props.adapter.pickedDateEnd;
 const dates = useCustomDate();
 
+interface GranularityValue {
+    label: string;
+    value: GranularityType;
+    disabled?: boolean;
+}
+
 // Granularity Selection values
-const granularityValues = computed(() => [
+const granularityValues = computed((): GranularityValue[] => [
     { label: "Jour", value: "day" },
     { label: "Mois", value: "month" },
     {
@@ -73,8 +79,7 @@ const calendarAveragingOptions = computed(() => {
                         :items="granularityValues"
                         name="granularity"
                         @update:model-value="
-                            (item) =>
-                                adapter.setGranularity(item as GranularityType)
+                            (item) => adapter.setGranularity(item)
                         "
                     />
                 </UFormField>
