@@ -413,3 +413,87 @@ def test_new_temperature_in_realtime_pipeline_appears_as_new_record():
     values = {(e.record_date, e.record_value) for e in second_for_station}
     assert (dt.date(2003, 7, 15), 38.0) in values
     assert (dt.date(2026, 7, 15), 45.0) in values
+
+
+@pytest.mark.django_db
+def test_record_on_cutoff_date_is_detected():
+    """Un record qui tombe exactement le jour de la cutoff_date doit être
+    détecté (borne de la query post-cutoff inclut la cutoff)."""
+    code = "76116016"
+    insert_station(code, "Station Cutoff Day Table", departement=76)
+    insert_mv_record(
+        code,
+        "Station Cutoff Day Table",
+        "all_time",
+        None,
+        "TX",
+        38.0,
+        dt.date(2003, 7, 15),
+    )
+    cutoff = dt.date(2026, 5, 23)
+    set_cutoff(cutoff)
+    insert_mv_quotidienne_realtime(code, cutoff, tn=_FILLER_TN, tx=45.0)
+
+    ds = HybridTemperatureRecordsDataSource()
+    result = ds.fetch_records(
+        TemperatureRecordsRequest(period_type="all_time", type_records="hot")
+    )
+
+    entries = [e for e in result.entries if e.station_id.strip() == code]
+    values = {(e.record_date, e.record_value) for e in entries}
+    assert (cutoff, 45.0) in values, (
+        f"Le record du jour de cutoff ({cutoff}) manque dans la réponse : " f"{entries}"
+    )
+
+
+@pytest.mark.django_db
+def test_record_present_in_mv_and_realtime_is_not_counted_twice():
+    """Un record présent à la fois dans mv_records_battus ET dans
+    mv_quotidienne_realtime (même valeur) ne doit pas apparaître deux fois."""
+    code = "76116017"
+    insert_station(code, "Station No Dup Table", departement=76)
+    same_day = dt.date(2026, 7, 15)
+    insert_mv_record(
+        code, "Station No Dup Table", "all_time", None, "TX", 42.0, same_day
+    )
+    set_cutoff(dt.date(2025, 12, 31))
+    insert_mv_quotidienne_realtime(code, same_day, tn=_FILLER_TN, tx=42.0)
+
+    ds = HybridTemperatureRecordsDataSource()
+    result = ds.fetch_records(
+        TemperatureRecordsRequest(period_type="all_time", type_records="hot")
+    )
+
+    entries = [e for e in result.entries if e.station_id.strip() == code]
+    on_same_day = [e for e in entries if e.record_date == same_day]
+    assert (
+        len(on_same_day) == 1
+    ), f"Le record du {same_day} apparaît {len(on_same_day)} fois : {on_same_day}"
+    assert on_same_day[0].record_value == 42.0
+
+
+@pytest.mark.django_db
+def test_stale_mv_record_does_not_duplicate_with_fresher_realtime():
+    """Si mv_records_battus a une valeur figée plus basse (38) que le pipeline
+    temps-réel (45) le même jour, la réponse ne doit contenir qu'une seule
+    ligne pour ce jour, avec la valeur la plus haute (la fraîche)."""
+    code = "76116018"
+    insert_station(code, "Station Stale MV Table", departement=76)
+    same_day = dt.date(2026, 7, 15)
+    insert_mv_record(
+        code, "Station Stale MV Table", "all_time", None, "TX", 38.0, same_day
+    )
+    set_cutoff(dt.date(2025, 12, 31))
+    insert_mv_quotidienne_realtime(code, same_day, tn=_FILLER_TN, tx=45.0)
+
+    ds = HybridTemperatureRecordsDataSource()
+    result = ds.fetch_records(
+        TemperatureRecordsRequest(period_type="all_time", type_records="hot")
+    )
+
+    entries = [e for e in result.entries if e.station_id.strip() == code]
+    on_same_day = [e for e in entries if e.record_date == same_day]
+    assert (
+        len(on_same_day) == 1
+    ), f"Le record du {same_day} apparaît {len(on_same_day)} fois : {on_same_day}"
+    assert on_same_day[0].record_value == 45.0

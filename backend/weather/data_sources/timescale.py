@@ -1085,6 +1085,51 @@ def _hybrid_period_sql_parts(
     return derived, "", "TRUE", {}, None
 
 
+def _dedup_table_entries(
+    entries: list,
+    keep_max: bool,
+) -> list:
+    """
+    Dedup TemperatureRecordEntry par (station_id, record_date), en
+    conservant la valeur max (chaud) ou min (froid). Utilisé pour fusionner
+    les résultats MV et post-cutoff quand un record apparaît dans les deux.
+    """
+    by_key: dict[tuple[str, dt.date], object] = {}
+    for e in entries:
+        key = (e.station_id, e.record_date)
+        prev = by_key.get(key)
+        if (
+            prev is None
+            or (keep_max and e.record_value > prev.record_value)
+            or (not keep_max and e.record_value < prev.record_value)
+        ):
+            by_key[key] = e
+    return list(by_key.values())
+
+
+def _dedup_graph_records(
+    records: list,
+) -> list:
+    """
+    Dedup RecordsGraphRecord par (station_id, date, type_records), en
+    conservant la valeur max pour "hot" et min pour "cold". Couvre le cas
+    où un record apparaît à la fois dans mv_records_battus et dans
+    v_quotidienne (par ex. MV figée avec une valeur plus stale).
+    """
+    by_key: dict[tuple[str, dt.date, str], object] = {}
+    for r in records:
+        key = (r.station_id, r.date, r.type_records)
+        prev = by_key.get(key)
+        keep_max = r.type_records == "hot"
+        if (
+            prev is None
+            or (keep_max and r.valeur > prev.valeur)
+            or (not keep_max and r.valeur < prev.valeur)
+        ):
+            by_key[key] = r
+    return list(by_key.values())
+
+
 class MaterializedTemperatureRecordsDataSource:
     """
     Data source optimisée : lit les records pré-calculés depuis la vue
@@ -1267,7 +1312,9 @@ class HybridTemperatureRecordsDataSource(TemperatureRecordsDataSource):
         if cutoff is None:
             return self._paginate(mv_entries, request)
         hot_results = self._fetch_records_after_cutoff(request, cutoff)
-        all_entries = mv_entries + hot_results
+        all_entries = _dedup_table_entries(
+            mv_entries + hot_results, keep_max=request.type_records == "hot"
+        )
         return self._paginate(all_entries, request)
 
     def _paginate(
@@ -1438,7 +1485,7 @@ class HybridTemperatureRecordsDataSource(TemperatureRecordsDataSource):
                     LEFT JOIN mv_seeds s
                         ON s.station_code = q.station_code
                         AND s.period_value IS NOT DISTINCT FROM {derived_period_expr}
-                WHERE q.date > %(cutoff_date)s
+                WHERE q.date >= %(cutoff_date)s
                     AND {date_period_clause}
                     AND q.{col} IS NOT NULL
             )
@@ -2150,7 +2197,7 @@ class HybridRecordsGraphDataSource(RecordsGraphDataSource):
             return mv_result
         if cutoff is None:
             return mv_result
-        if request.date_end <= cutoff:
+        if request.date_end < cutoff:
             return mv_result
 
         if request.type_records == "all":
@@ -2164,9 +2211,8 @@ class HybridRecordsGraphDataSource(RecordsGraphDataSource):
                 self._fetch_records_after_cutoff(request, cutoff, type_records)
             )
 
-        all_records = sorted(
-            list(mv_result.records) + new_records, key=lambda r: r.date
-        )
+        combined = _dedup_graph_records(list(mv_result.records) + new_records)
+        all_records = sorted(combined, key=lambda r: r.date)
         buckets = self._compute_buckets(all_records, request)
         return RecordsGraphResult(buckets=buckets, records=all_records)
 
@@ -2236,7 +2282,7 @@ class HybridRecordsGraphDataSource(RecordsGraphDataSource):
                     LEFT JOIN mv_seeds s
                         ON s.station_code = q.station_code
                         AND s.period_value IS NOT DISTINCT FROM {derived_period_expr}
-                WHERE q.date > %(cutoff_date)s
+                WHERE q.date >= %(cutoff_date)s
                     AND {date_period_clause}
                     AND q.{col} IS NOT NULL
             )
