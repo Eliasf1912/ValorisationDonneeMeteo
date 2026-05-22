@@ -10,6 +10,9 @@ const props = defineProps({
         default: "",
     },
 });
+
+const RECORD_STATIONS_ENDPOINT = "/stations/records/";
+
 const store = useRecordsChartStore();
 const { stationCodeFilter } = storeToRefs(store);
 const { addStationFilter } = store;
@@ -19,12 +22,12 @@ const debouncedSearch = refDebounced(searchQueryRef, 300);
 
 const params = computed(() => ({
     search: debouncedSearch.value,
-    first_temperature_year_max: new Date().getFullYear() - 50,
-    classe_recente_max: 3,
 }));
 
-const { allStations, onLoadMore, hasMore } =
-    useStationsWithInfiniteScroll(params);
+const { allStations, onLoadMore, hasMore } = useStationsWithInfiniteScroll(
+    params,
+    RECORD_STATIONS_ENDPOINT,
+);
 
 function onSelectStation(_event: PointerEvent, station: Station) {
     addStationFilter(station);

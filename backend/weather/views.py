@@ -40,8 +40,8 @@ from weather.services.temperature_records.use_case import (
 from .bootstrap_temperature_absolute_records_graph import (
     TemperatureAbsoluteRecordsGraphDependencyProvider,
 )
-from .filters import StationFilter
-from .models import StationQualifieeHexagone
+from .filters import StationDeviationFilter, StationFilter, StationRecordsFilter
+from .models import StationDeviation, StationQualifieeHexagone, StationRecords
 from .serializers import (
     AbsoluteRecordsGraphResponseSerializer,
     ErrorSerializer,
@@ -52,6 +52,10 @@ from .serializers import (
     RecordsGraphQuerySerializer,
     RecordsGraphResponseSerializer,
     StationDetailSerializer,
+    StationDeviationDetailSerializer,
+    StationDeviationSerializer,
+    StationRecordsDetailSerializer,
+    StationRecordsSerializer,
     StationSerializer,
     TemperatureDeviationGraphQuerySerializer,
     TemperatureDeviationOverviewQuerySerializer,
@@ -62,6 +66,23 @@ from .serializers import (
     TemperatureRecordsQuerySerializer,
     TemperatureRecordsResponseSerializer,
 )
+
+
+class BaseStationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for weather station metadata.
+    Provides list and retrieve actions only (read-only).
+    """
+
+    search_fields = ["name", "departement", "station_code"]
+    ordering_fields = ["name", "departement", "alt"]
+    ordering = ["name"]
+    detail_serializer_class = None
+
+    def get_serializer_class(self):
+        if self.action == "retrieve" and self.detail_serializer_class is not None:
+            return self.detail_serializer_class
+        return self.serializer_class
 
 
 @extend_schema_view(
@@ -85,23 +106,79 @@ from .serializers import (
         tags=["Stations"],
     ),
 )
-class StationViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for weather station metadata.
-    Provides list and retrieve actions only (read-only).
-    """
-
+class StationViewSet(BaseStationViewSet):
     queryset = StationQualifieeHexagone.objects.all()
     serializer_class = StationSerializer
+    detail_serializer_class = StationDetailSerializer
     filterset_class = StationFilter
-    search_fields = ["name", "departement", "station_code"]
-    ordering_fields = ["name", "departement", "alt"]
-    ordering = ["name"]
 
-    def get_serializer_class(self):
-        if self.action == "retrieve":
-            return StationDetailSerializer
-        return StationSerializer
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Liste des stations pour records",
+        description=(
+            "Retourne la liste des stations meteorologiques eligibles aux records, "
+            "depuis la vue `v_station_records`."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "first_temperature_year_max",
+                int,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Année maximale de `first_temperature_date` pour filtrer les stations.",
+            )
+        ],
+        tags=["Stations"],
+    ),
+    retrieve=extend_schema(
+        summary="Detail d'une station pour records",
+        description=(
+            "Retourne les details d'une station specifique depuis la vue "
+            "`v_station_records`."
+        ),
+        tags=["Stations"],
+    ),
+)
+class StationRecordsViewSet(BaseStationViewSet):
+    queryset = StationRecords.objects.all()
+    serializer_class = StationRecordsSerializer
+    detail_serializer_class = StationRecordsDetailSerializer
+    filterset_class = StationRecordsFilter
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Liste des stations pour deviation",
+        description=(
+            "Retourne la liste des stations meteorologiques eligibles aux calculs "
+            "de deviation, depuis la vue `v_station_deviation`."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "first_temperature_year_max",
+                int,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Année maximale de `first_temperature_date` pour filtrer les stations.",
+            )
+        ],
+        tags=["Stations"],
+    ),
+    retrieve=extend_schema(
+        summary="Detail d'une station pour deviation",
+        description=(
+            "Retourne les details d'une station specifique depuis la vue "
+            "`v_station_deviation`."
+        ),
+        tags=["Stations"],
+    ),
+)
+class StationDeviationViewSet(BaseStationViewSet):
+    queryset = StationDeviation.objects.all()
+    serializer_class = StationDeviationSerializer
+    detail_serializer_class = StationDeviationDetailSerializer
+    filterset_class = StationDeviationFilter
 
 
 class NationalIndicatorAPIView(APIView):

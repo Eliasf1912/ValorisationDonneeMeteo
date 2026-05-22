@@ -5,13 +5,16 @@ import type {
     StationFilters,
 } from "~/types/api";
 
+const DEFAULT_STATIONS_ENDPOINT = "/stations/";
+
 export function useStations(
     filters: MaybeRef<StationFilters>,
     options?: Record<string, unknown>,
+    endpoint: string = DEFAULT_STATIONS_ENDPOINT,
 ) {
     const { useApiFetch } = useApiClient();
 
-    return useApiFetch<PaginatedResponse<Station>>("/stations/", {
+    return useApiFetch<PaginatedResponse<Station>>(endpoint, {
         query: filters,
         watch: [filters],
         immediate: true,
@@ -21,6 +24,7 @@ export function useStations(
 
 export function useStationsWithInfiniteScroll(
     filters: MaybeRef<StationFilters>,
+    endpoint: string = DEFAULT_STATIONS_ENDPOINT,
 ) {
     const allStations = ref<Station[]>([]);
     const hasMore = ref<boolean>(false);
@@ -31,10 +35,14 @@ export function useStationsWithInfiniteScroll(
         offset: page.value * 100,
     }));
 
-    const { data: stationsData } = useStations(params, {
-        watch: [params],
-        immediate: true,
-    });
+    const { data: stationsData } = useStations(
+        params,
+        {
+            watch: [params],
+            immediate: true,
+        },
+        endpoint,
+    );
 
     function processStations(newData: PaginatedResponse<Station> | undefined) {
         if (!newData) return;
@@ -69,8 +77,11 @@ export function useStationsWithInfiniteScroll(
     };
 }
 
-export function useStation(id: MaybeRef<number | string>) {
+export function useStation(
+    id: MaybeRef<number | string>,
+    endpoint: string = DEFAULT_STATIONS_ENDPOINT,
+) {
     const { useApiFetch } = useApiClient();
 
-    return useApiFetch<StationDetail>(() => `/stations/${toValue(id)}/`);
+    return useApiFetch<StationDetail>(() => `${endpoint}${toValue(id)}/`);
 }

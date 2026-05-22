@@ -58,6 +58,68 @@ class StationQualifieeHexagone(models.Model):
         return f"{self.name} ({self.station_code})"
 
 
+class StationRecords(models.Model):
+    station_code = models.CharField(primary_key=True, max_length=8)
+    name = models.TextField()
+
+    departement = models.IntegerField(null=True, blank=True)
+
+    is_open = models.BooleanField(null=True, blank=True)
+    station_type = models.IntegerField(null=True, blank=True)
+
+    lon = models.FloatField(null=True, blank=True)
+    lat = models.FloatField(null=True, blank=True)
+    alt = models.FloatField(null=True, blank=True)
+
+    is_public = models.BooleanField(null=True, blank=True)
+
+    date_de_creation = TimestampAsDateField()
+    date_de_fermeture = TimestampAsDateField(null=True, blank=True)
+    annee_de_creation = models.IntegerField()
+    annee_de_fermeture = models.IntegerField(null=True, blank=True)
+    first_temperature_date = TimestampAsDateField()
+
+    classe_recente = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = "v_station_records"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.station_code})"
+
+
+class StationDeviation(models.Model):
+    station_code = models.CharField(primary_key=True, max_length=8)
+    name = models.TextField()
+
+    departement = models.IntegerField(null=True, blank=True)
+
+    is_open = models.BooleanField(null=True, blank=True)
+    station_type = models.IntegerField(null=True, blank=True)
+
+    lon = models.FloatField(null=True, blank=True)
+    lat = models.FloatField(null=True, blank=True)
+    alt = models.FloatField(null=True, blank=True)
+
+    is_public = models.BooleanField(null=True, blank=True)
+
+    date_de_creation = TimestampAsDateField()
+    date_de_fermeture = TimestampAsDateField(null=True, blank=True)
+    annee_de_creation = models.IntegerField()
+    annee_de_fermeture = models.IntegerField(null=True, blank=True)
+    first_temperature_date = TimestampAsDateField()
+
+    classe_recente = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = "v_station_deviation"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.station_code})"
+
+
 class Quotidienne(models.Model):
     pk = models.CompositePrimaryKey("station_code", "date")
 

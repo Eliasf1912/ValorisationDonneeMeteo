@@ -7,16 +7,18 @@ import MaxTerritoriesReachedTooltip from "~/components/ui/commons/MaxTerritories
 const deviationStore = useDeviationStore();
 const { includeNational, selectedStations } = storeToRefs(deviationStore);
 
+const DEVIATION_STATIONS_ENDPOINT = "/stations/deviation/";
+
 const searchQuery = ref<undefined | string>(undefined);
 const debouncedSearch = refDebounced(searchQuery, 300);
 
 const params = computed(() => ({
     search: debouncedSearch.value,
-    first_temperature_year_max: 1997,
-    classe_recente_max: 4,
 }));
-const { allStations, onLoadMore, hasMore } =
-    useStationsWithInfiniteScroll(params);
+const { allStations, onLoadMore, hasMore } = useStationsWithInfiniteScroll(
+    params,
+    DEVIATION_STATIONS_ENDPOINT,
+);
 
 function onSelectStation(_event: PointerEvent, station: Station) {
     deviationStore.setStations([...deviationStore.selectedStations, station]);

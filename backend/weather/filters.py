@@ -4,7 +4,7 @@ Django-filter definitions for weather API filtering.
 
 import django_filters
 
-from .models import StationQualifieeHexagone
+from .models import StationDeviation, StationQualifieeHexagone, StationRecords
 
 
 class StationFilter(django_filters.FilterSet):
@@ -43,3 +43,13 @@ class StationFilter(django_filters.FilterSet):
             "poste_ouvert",
             "poste_public",
         ]
+
+
+class StationRecordsFilter(StationFilter):
+    class Meta(StationFilter.Meta):
+        model = StationRecords
+
+
+class StationDeviationFilter(StationFilter):
+    class Meta(StationFilter.Meta):
+        model = StationDeviation

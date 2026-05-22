@@ -10,6 +10,8 @@ from .views import (
     NationalIndicatorAPIView,
     NationalIndicatorKpiAPIView,
     RecordsGraphAPIView,
+    StationDeviationViewSet,
+    StationRecordsViewSet,
     StationViewSet,
     TemperatureAbsoluteRecordsAPIView,
     TemperatureDeviationGraphAPIView,
@@ -19,6 +21,10 @@ from .views import (
 )
 
 router = DefaultRouter()
+router.register(r"stations/records", StationRecordsViewSet, basename="station-records")
+router.register(
+    r"stations/deviation", StationDeviationViewSet, basename="station-deviation"
+)
 router.register(r"stations", StationViewSet, basename="station")
 
 urlpatterns = [

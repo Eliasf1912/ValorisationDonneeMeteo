@@ -4,7 +4,7 @@ DRF Serializers for weather data models.
 
 from rest_framework import serializers
 
-from .models import StationQualifieeHexagone
+from .models import StationDeviation, StationQualifieeHexagone, StationRecords
 
 
 class StationSerializer(serializers.ModelSerializer):
@@ -31,6 +31,26 @@ class StationSerializer(serializers.ModelSerializer):
 
 class StationDetailSerializer(StationSerializer):
     class Meta(StationSerializer.Meta):
+        pass
+
+
+class StationRecordsSerializer(StationSerializer):
+    class Meta(StationSerializer.Meta):
+        model = StationRecords
+
+
+class StationRecordsDetailSerializer(StationRecordsSerializer):
+    class Meta(StationRecordsSerializer.Meta):
+        pass
+
+
+class StationDeviationSerializer(StationSerializer):
+    class Meta(StationSerializer.Meta):
+        model = StationDeviation
+
+
+class StationDeviationDetailSerializer(StationDeviationSerializer):
+    class Meta(StationDeviationSerializer.Meta):
         pass
 
 
