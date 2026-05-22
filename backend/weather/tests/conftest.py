@@ -130,6 +130,9 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
     v_quotidienne = (
         BASE_DIR / "sql" / "views" / "310_002_v_quotidienne.sql"
     ).read_text()
+    v_mensuelle_realtime_sql = (
+        BASE_DIR / "sql" / "materialized_views" / "320_003_v_mensuelle_realtime.sql"
+    ).read_text()
     v_station_classe_1234 = (
         BASE_DIR / "sql" / "views" / "210_003_v_station_classe_1234.sql"
     ).read_text()
@@ -246,6 +249,7 @@ def setup_db_schema_and_views(django_db_setup, django_db_blocker):
                 );
             """)
             cur.execute(v_quotidienne)
+            cur.execute(v_mensuelle_realtime_sql)
             cur.execute(v_station_classe_1234)
             cur.execute(v_station_classe_123_sql)
             cur.execute(v_station_deviation_sql)
