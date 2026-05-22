@@ -14,12 +14,9 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from weather.bootstrap_itn import ITNDependencies, ITNDependencyProvider
+from weather.bootstrap_itn_kpi import ITNKpiDependencyProvider
 from weather.services.national_indicator.protocols import (
-    NationalIndicatorAbsoluteExtremesDataSource,
-    NationalIndicatorBaselineDataSource,
     NationalIndicatorKpiDataSource,
-    NationalIndicatorObservedDataSource,
 )
 from weather.services.national_indicator.types import (
     KpiPeriodStats,
@@ -37,45 +34,8 @@ class _StubKpiDataSource(NationalIndicatorKpiDataSource):
         return self._result
 
 
-class _UnusedDataSource(
-    NationalIndicatorObservedDataSource,
-    NationalIndicatorBaselineDataSource,
-    NationalIndicatorAbsoluteExtremesDataSource,
-):
-    """Placeholder pour les autres dépendances ITN — non sollicitées par l'endpoint /kpi."""
-
-    def fetch_daily_series(self, _query):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-    def fetch_daily_baseline(self, _day):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-    def fetch_monthly_baseline(self, _month):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-    def fetch_yearly_baseline(self):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-    def fetch_daily_absolute_extremes(self, _pairs):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-    def fetch_monthly_absolute_extremes(self, _months):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-    def fetch_yearly_absolute_extremes(self):  # type: ignore[override]
-        raise AssertionError("not expected to be invoked by /kpi")
-
-
 def _register(result: NationalIndicatorKpiResult) -> None:
-    unused = _UnusedDataSource()
-    ITNDependencyProvider.set_builder(
-        lambda: ITNDependencies(
-            observed_data_source=unused,
-            baseline_data_source=unused,
-            absolute_extremes_data_source=unused,
-            kpi_data_source=_StubKpiDataSource(result),
-        )
-    )
+    ITNKpiDependencyProvider.set_builder(lambda: _StubKpiDataSource(result))
 
 
 def _stats(
@@ -98,10 +58,10 @@ def _stats(
 
 
 @pytest.fixture(autouse=True)
-def reset_itn_dependency_provider():
-    ITNDependencyProvider.reset()
+def reset_itn_kpi_dependency_provider():
+    ITNKpiDependencyProvider.reset()
     yield
-    ITNDependencyProvider.reset()
+    ITNKpiDependencyProvider.reset()
 
 
 # ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from weather.bootstrap_itn import ITNDependencyProvider
+from weather.bootstrap_itn_kpi import ITNKpiDependencyProvider
 from weather.bootstrap_records_graph import RecordsGraphDependencyProvider
 from weather.bootstrap_temperature_absolute_records import (
     TemperatureAbsoluteRecordsDependencyProvider,
@@ -629,10 +630,10 @@ class NationalIndicatorKpiAPIView(APIView):
             )
 
         params = q.validated_data
-        deps = ITNDependencyProvider.get_dep()
+        kpi_data_source = ITNKpiDependencyProvider.get_dep()
 
         result = get_national_indicator_kpi(
-            kpi_data_source=deps.kpi_data_source,
+            kpi_data_source=kpi_data_source,
             date_start=params["date_start"],
             date_end=params["date_end"],
         )
