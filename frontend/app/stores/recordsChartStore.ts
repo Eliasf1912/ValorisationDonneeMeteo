@@ -2,8 +2,8 @@ import {
     dateToStringYMD,
     getFirstDayOfMonth,
     getFirstDayOfYearInLocal,
-    getLastAvailableDayOfMonth,
-    getLastAvailableDayOfYearInLocal,
+    getLastAvailableDayOfMonthForRecords,
+    getLastAvailableDayOfYearForRecordsInLocal,
 } from "~/utils/date";
 import type {
     PeriodType,
@@ -109,9 +109,11 @@ export const useRecordsChartStore = defineStore("recordChartStore", () => {
 
     const effectiveDateEnd = computed(() => {
         if (granularity.value === "year")
-            return getLastAvailableDayOfYearInLocal(pickedDateEnd.value);
+            return getLastAvailableDayOfYearForRecordsInLocal(
+                pickedDateEnd.value,
+            );
         if (granularity.value === "month")
-            return getLastAvailableDayOfMonth(pickedDateEnd.value);
+            return getLastAvailableDayOfMonthForRecords(pickedDateEnd.value);
         return pickedDateEnd.value;
     });
 

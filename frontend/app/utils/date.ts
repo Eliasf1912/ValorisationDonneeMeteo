@@ -52,12 +52,64 @@ export function getLastAvailableDayOfYear(
  * Returns the last day of the year for the given date as date (local time)
  * otherwise, returns today minus 2 days if the year is the current year.
  */
+export function getLastAvailableDayOfYearForRecords(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return isCurrentYear(date, today)
+        ? getTodayDate(today)
+        : getLastDayOfYear(date);
+}
+
+/**
+ * Returns the last day of the year for the given date as date (local time)
+ * otherwise, returns today minus 2 days if the year is the current year.
+ */
+export function getLastAvailableDayOfYearForDeviation(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return isCurrentYear(date, today)
+        ? getOneDayBeforeDate(today)
+        : getLastDayOfYear(date);
+}
+
+/**
+ * Returns the last day of the year for the given date as date (local time)
+ * otherwise, returns today minus 2 days if the year is the current year.
+ */
 export function getLastAvailableDayOfYearInLocal(
     date: Date,
     today: Date = new Date(),
 ): Date {
     return fromUTCToLocal(
         getLastAvailableDayOfYear(fromLocalToUTC(date), today),
+    );
+}
+
+/**
+ * Returns the last day of the year for the given date as date (local time)
+ * otherwise, returns today minus 2 days if the year is the current year.
+ */
+export function getLastAvailableDayOfYearForRecordsInLocal(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return fromUTCToLocal(
+        getLastAvailableDayOfYearForRecords(fromLocalToUTC(date), today),
+    );
+}
+
+/**
+ * Returns the last day of the year for the given date as date (local time)
+ * otherwise, returns today minus 2 days if the year is the current year.
+ */
+export function getLastAvailableDayOfYearForDeviationInLocal(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return fromUTCToLocal(
+        getLastAvailableDayOfYearForDeviation(fromLocalToUTC(date), today),
     );
 }
 
@@ -87,6 +139,30 @@ export function getLastAvailableDayOfMonth(
     return isCurrentMonth(date, today)
         ? getOneDayBeforeDate(today)
         : getLastDayOfMonth(date);
+}
+
+export function getLastAvailableDayOfMonthForRecords(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return isCurrentMonth(date, today)
+        ? getTodayDate(today)
+        : getLastDayOfMonth(date);
+}
+
+export function getLastAvailableDayOfMonthForDeviation(
+    date: Date,
+    today: Date = new Date(),
+): Date {
+    return isCurrentMonth(date, today)
+        ? getOneDayBeforeDate(today)
+        : getLastDayOfMonth(date);
+}
+
+export function getTodayDate(date: Date): Date {
+    return new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
 }
 
 export function getOneDayBeforeDate(date: Date): Date {

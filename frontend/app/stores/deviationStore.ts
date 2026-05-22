@@ -13,8 +13,8 @@ import type { DeviationStationIdAndName } from "~/types/common";
 import {
     getFirstDayOfMonth,
     getFirstDayOfYearInLocal,
-    getLastAvailableDayOfMonth,
-    getLastAvailableDayOfYearInLocal,
+    getLastAvailableDayOfMonthForDeviation,
+    getLastAvailableDayOfYearForDeviationInLocal,
 } from "~/utils/date";
 import { useCustomDate } from "#imports";
 
@@ -134,9 +134,11 @@ export const useDeviationStore = defineStore("deviationStore", () => {
 
     const effectiveDateEnd = computed(() => {
         if (granularity.value === "year")
-            return getLastAvailableDayOfYearInLocal(pickedDateEnd.value);
+            return getLastAvailableDayOfYearForDeviationInLocal(
+                pickedDateEnd.value,
+            );
         if (granularity.value === "month")
-            return getLastAvailableDayOfMonth(pickedDateEnd.value);
+            return getLastAvailableDayOfMonthForDeviation(pickedDateEnd.value);
         return pickedDateEnd.value;
     });
 
