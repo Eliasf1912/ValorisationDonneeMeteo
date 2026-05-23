@@ -1071,209 +1071,235 @@ CREATE OR REPLACE VIEW public.v_records_battus AS
 
 WITH
 
+-- -------------------------------------------------------------------------
+-- ALL-TIME : window sur toute l'histoire de la station
+-- -------------------------------------------------------------------------
+
 tx_all AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TX" AS val,
-        MAX(q."TX") OVER (
-            PARTITION BY q."NUM_POSTE"
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tx AS val,
+        MAX(q.tx) OVER (
+            PARTITION BY q.station_code
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TX" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tx IS NOT NULL
 ),
 
 tn_all AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TN" AS val,
-        MIN(q."TN") OVER (
-            PARTITION BY q."NUM_POSTE"
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tn AS val,
+        MIN(q.tn) OVER (
+            PARTITION BY q.station_code
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TN" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tn IS NOT NULL
 ),
+
+-- -------------------------------------------------------------------------
+-- MONTHLY : window partitionnée par (station, mois calendaire)
+-- -------------------------------------------------------------------------
 
 tx_monthly AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TX" AS val,
-        EXTRACT(MONTH FROM q."AAAAMMJJ")::int AS month_num,
-        MAX(q."TX") OVER (
-            PARTITION BY q."NUM_POSTE", EXTRACT(MONTH FROM q."AAAAMMJJ")
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tx AS val,
+        EXTRACT(MONTH FROM q.date)::int AS month_num,
+        MAX(q.tx) OVER (
+            PARTITION BY q.station_code, EXTRACT(MONTH FROM q.date)
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TX" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tx IS NOT NULL
 ),
 
 tn_monthly AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TN" AS val,
-        EXTRACT(MONTH FROM q."AAAAMMJJ")::int AS month_num,
-        MIN(q."TN") OVER (
-            PARTITION BY q."NUM_POSTE", EXTRACT(MONTH FROM q."AAAAMMJJ")
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tn AS val,
+        EXTRACT(MONTH FROM q.date)::int AS month_num,
+        MIN(q.tn) OVER (
+            PARTITION BY q.station_code, EXTRACT(MONTH FROM q.date)
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TN" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tn IS NOT NULL
 ),
+
+-- -------------------------------------------------------------------------
+-- SEASONAL : window partitionnée par (station, saison)
+--   winter = 12, 1, 2 | spring = 3, 4, 5
+--   summer = 6, 7, 8  | autumn = 9, 10, 11
+-- -------------------------------------------------------------------------
 
 tx_seasonal AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TX" AS val,
-        CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tx AS val,
+        CASE EXTRACT(MONTH FROM q.date)::int
             WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
             WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
             WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
             WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
         END AS season_val,
-        MAX(q."TX") OVER (
-            PARTITION BY q."NUM_POSTE",
-                CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        MAX(q.tx) OVER (
+            PARTITION BY q.station_code,
+                CASE EXTRACT(MONTH FROM q.date)::int
                     WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
                     WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
                     WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
                     WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
                 END
-            ORDER BY q."AAAAMMJJ"
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TX" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tx IS NOT NULL
 ),
 
 tn_seasonal AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TN" AS val,
-        CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tn AS val,
+        CASE EXTRACT(MONTH FROM q.date)::int
             WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
             WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
             WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
             WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
         END AS season_val,
-        MIN(q."TN") OVER (
-            PARTITION BY q."NUM_POSTE",
-                CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        MIN(q.tn) OVER (
+            PARTITION BY q.station_code,
+                CASE EXTRACT(MONTH FROM q.date)::int
                     WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
                     WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
                     WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
                     WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
                 END
-            ORDER BY q."AAAAMMJJ"
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TN" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tn IS NOT NULL
 )
 
+-- All-time chaud
 SELECT
-    'all_time'   AS period_type,
-    NULL::text   AS period_value,
-    'TX'         AS record_type,
-    r."NUM_POSTE"    AS station_code,
-    s.name           AS station_name,
-    s.departement    AS department,
-    r.val            AS record_value,
-    r."AAAAMMJJ"     AS record_date
+    'all_time'    AS period_type,
+    NULL::text    AS period_value,
+    'TX'          AS record_type,
+    r."NUM_POSTE" AS station_code,
+    s.name        AS station_name,
+    s.departement AS department,
+    r.val         AS record_value,
+    r."AAAAMMJJ"  AS record_date
 FROM tx_all r
-JOIN public.v_station_records s ON s.station_code = r."NUM_POSTE"
+    INNER JOIN public.v_station_records s
+        ON s.station_code = r."NUM_POSTE"
 WHERE (r.prev_val IS NULL OR r.val > r.prev_val)
-  AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
+    AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
 
 UNION ALL
 
+-- All-time froid
 SELECT
-    'all_time'       AS period_type,
-    NULL::text       AS period_value,
-    'TN'             AS record_type,
-    r."NUM_POSTE"    AS station_code,
-    s.name           AS station_name,
-    s.departement    AS department,
-    r.val            AS record_value,
-    r."AAAAMMJJ"     AS record_date
+    'all_time'    AS period_type,
+    NULL::text    AS period_value,
+    'TN'          AS record_type,
+    r."NUM_POSTE" AS station_code,
+    s.name        AS station_name,
+    s.departement AS department,
+    r.val         AS record_value,
+    r."AAAAMMJJ"  AS record_date
 FROM tn_all r
-JOIN public.v_station_records s ON s.station_code = r."NUM_POSTE"
+    INNER JOIN public.v_station_records s
+        ON s.station_code = r."NUM_POSTE"
 WHERE (r.prev_val IS NULL OR r.val < r.prev_val)
-  AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
+    AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
 
 UNION ALL
 
+-- Monthly chaud
 SELECT
-    'month'              AS period_type,
-    r.month_num::text    AS period_value,
-    'TX'                 AS record_type,
-    r."NUM_POSTE"        AS station_code,
-    s.name               AS station_name,
-    s.departement        AS department,
-    r.val                AS record_value,
-    r."AAAAMMJJ"         AS record_date
+    'month'           AS period_type,
+    r.month_num::text AS period_value,
+    'TX'              AS record_type,
+    r."NUM_POSTE"     AS station_code,
+    s.name            AS station_name,
+    s.departement     AS department,
+    r.val             AS record_value,
+    r."AAAAMMJJ"      AS record_date
 FROM tx_monthly r
-JOIN public.v_station_records s ON s.station_code = r."NUM_POSTE"
+    INNER JOIN public.v_station_records s
+        ON s.station_code = r."NUM_POSTE"
 WHERE (r.prev_val IS NULL OR r.val > r.prev_val)
-  AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
+    AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
 
 UNION ALL
 
+-- Monthly froid
 SELECT
-    'month'              AS period_type,
-    r.month_num::text    AS period_value,
-    'TN'                 AS record_type,
-    r."NUM_POSTE"        AS station_code,
-    s.name               AS station_name,
-    s.departement        AS department,
-    r.val                AS record_value,
-    r."AAAAMMJJ"         AS record_date
+    'month'           AS period_type,
+    r.month_num::text AS period_value,
+    'TN'              AS record_type,
+    r."NUM_POSTE"     AS station_code,
+    s.name            AS station_name,
+    s.departement     AS department,
+    r.val             AS record_value,
+    r."AAAAMMJJ"      AS record_date
 FROM tn_monthly r
-JOIN public.v_station_records s ON s.station_code = r."NUM_POSTE"
+    INNER JOIN public.v_station_records s
+        ON s.station_code = r."NUM_POSTE"
 WHERE (r.prev_val IS NULL OR r.val < r.prev_val)
-  AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
+    AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
 
 UNION ALL
 
+-- Seasonal chaud
 SELECT
-    'season'         AS period_type,
-    r.season_val     AS period_value,
-    'TX'             AS record_type,
-    r."NUM_POSTE"    AS station_code,
-    s.name           AS station_name,
-    s.departement    AS department,
-    r.val            AS record_value,
-    r."AAAAMMJJ"     AS record_date
+    'season'      AS period_type,
+    r.season_val  AS period_value,
+    'TX'          AS record_type,
+    r."NUM_POSTE" AS station_code,
+    s.name        AS station_name,
+    s.departement AS department,
+    r.val         AS record_value,
+    r."AAAAMMJJ"  AS record_date
 FROM tx_seasonal r
-JOIN public.v_station_records s ON s.station_code = r."NUM_POSTE"
+    INNER JOIN public.v_station_records s
+        ON s.station_code = r."NUM_POSTE"
 WHERE (r.prev_val IS NULL OR r.val > r.prev_val)
-  AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
+    AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years'
 
 UNION ALL
 
+-- Seasonal froid
 SELECT
-    'season'         AS period_type,
-    r.season_val     AS period_value,
-    'TN'             AS record_type,
-    r."NUM_POSTE"    AS station_code,
-    s.name           AS station_name,
-    s.departement    AS department,
-    r.val            AS record_value,
-    r."AAAAMMJJ"     AS record_date
+    'season'      AS period_type,
+    r.season_val  AS period_value,
+    'TN'          AS record_type,
+    r."NUM_POSTE" AS station_code,
+    s.name        AS station_name,
+    s.departement AS department,
+    r.val         AS record_value,
+    r."AAAAMMJJ"  AS record_date
 FROM tn_seasonal r
-JOIN public.v_station_records s ON s.station_code = r."NUM_POSTE"
+    INNER JOIN public.v_station_records s
+        ON s.station_code = r."NUM_POSTE"
 WHERE (r.prev_val IS NULL OR r.val < r.prev_val)
-  AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years';
+    AND r."AAAAMMJJ" >= s.first_temperature_date + interval '50 years';
 
 CREATE MATERIALIZED VIEW public.mv_records_battus AS
 SELECT

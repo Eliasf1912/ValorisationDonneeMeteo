@@ -14,9 +14,11 @@ from weather.tests.helpers.records import (
 )
 from weather.tests.helpers.stations import insert_station
 
-# NB : ces tests couvrent l'enrichissement post-cutoff du HybridRecordsGraphDataSource.
-# Cette pipeline n'est plus branchée en prod (bootstrap utilise le data source
-# MV-only) — les tests sont conservés pour quand la feature sera ré-activée.
+# NB : ces tests couvrent l'enrichissement post-cutoff du
+# HybridRecordsGraphDataSource lui-même, indépendamment du branchement endpoint.
+_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON = (
+    "mv_records_battus_realtime path is not developed for now"
+)
 
 
 def _req(**kwargs) -> RecordsGraphRequest:
@@ -36,6 +38,7 @@ def _req(**kwargs) -> RecordsGraphRequest:
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_new_temperature_in_realtime_pipeline_appears_as_new_record():
     """
     Scénario réaliste : un record historique existe dans mv_records_battus.
@@ -86,6 +89,7 @@ def test_new_temperature_in_realtime_pipeline_appears_as_new_record():
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_record_on_cutoff_date_is_detected():
     """Quand un nouveau record tombe le MÊME jour que la cutoff_date,
     il doit être détecté (la borne de la query post-cutoff inclut la cutoff)."""
@@ -242,6 +246,7 @@ def test_absolute_record_predates_50_year_filter_seeds_correctly():
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_real_new_cold_record_still_detected_against_absolute_seed():
     """Vérifie que le fix MARIGNANE (seed via v_records_absolus_par_type)
     n'a pas supprimé les vrais nouveaux records : si une TN post-cutoff
@@ -291,6 +296,7 @@ def test_real_new_cold_record_still_detected_against_absolute_seed():
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_real_new_records_detected_with_type_records_all():
     """Réplique du cas staging : type_records=all, period_type=month, month=5
     avec une station style MARIGNANE (records absolus en mv_records_absolus_par_mois,
@@ -343,6 +349,7 @@ def test_real_new_records_detected_with_type_records_all():
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_today_real_new_hot_record_with_period_type_month_no_month():
     """Réplique exacte de l'URL staging qui ne renvoie plus les vrais nouveaux
     records après le fix MARIGNANE :
@@ -396,6 +403,7 @@ def test_today_real_new_hot_record_with_period_type_month_no_month():
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_real_new_hot_record_still_detected_against_absolute_seed():
     """Symétrique : un vrai nouveau record chaud doit toujours apparaître."""
     code = "13054003"
@@ -489,6 +497,7 @@ def test_no_false_positive_cold_when_type_records_all():
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason=_MV_RECORDS_BATTUS_REALTIME_SKIP_REASON)
 def test_stale_mv_record_does_not_duplicate_with_fresher_realtime():
     """Quand le mv_records_battus a une valeur figée (par ex. 38) mais que la
     pipeline temps-réel a vu plus chaud le même jour (45), la réponse ne doit

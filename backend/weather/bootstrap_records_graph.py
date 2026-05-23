@@ -9,11 +9,13 @@ from weather.services.records_graph.protocols import RecordsGraphDataSource
 
 def _default_builder() -> RecordsGraphDataSource:
     from weather.data_sources.records_graph_fake import FakeRecordsGraphDataSource
-    from weather.data_sources.timescale import HybridRecordsGraphDataSource
+    from weather.data_sources.timescale import TimescaleRecordsGraphDataSource
 
     if settings.MOCKED_DATA:
         return FakeRecordsGraphDataSource()
-    return HybridRecordsGraphDataSource()
+    # Enrichissement post-cutoff (HybridRecordsGraphDataSource) désactivé :
+    # on lit directement mv_records_battus, qu'on rafraîchit régulièrement.
+    return TimescaleRecordsGraphDataSource()
 
 
 class RecordsGraphDependencyProvider:

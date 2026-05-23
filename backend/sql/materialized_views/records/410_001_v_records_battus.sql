@@ -52,30 +52,30 @@ WITH
 
 tx_all AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TX" AS val,
-        MAX(q."TX") OVER (
-            PARTITION BY q."NUM_POSTE"
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tx AS val,
+        MAX(q.tx) OVER (
+            PARTITION BY q.station_code
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TX" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tx IS NOT NULL
 ),
 
 tn_all AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TN" AS val,
-        MIN(q."TN") OVER (
-            PARTITION BY q."NUM_POSTE"
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tn AS val,
+        MIN(q.tn) OVER (
+            PARTITION BY q.station_code
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TN" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tn IS NOT NULL
 ),
 
 -- -------------------------------------------------------------------------
@@ -84,32 +84,32 @@ tn_all AS (
 
 tx_monthly AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TX" AS val,
-        EXTRACT(MONTH FROM q."AAAAMMJJ")::int AS month_num,
-        MAX(q."TX") OVER (
-            PARTITION BY q."NUM_POSTE", EXTRACT(MONTH FROM q."AAAAMMJJ")
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tx AS val,
+        EXTRACT(MONTH FROM q.date)::int AS month_num,
+        MAX(q.tx) OVER (
+            PARTITION BY q.station_code, EXTRACT(MONTH FROM q.date)
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TX" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tx IS NOT NULL
 ),
 
 tn_monthly AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TN" AS val,
-        EXTRACT(MONTH FROM q."AAAAMMJJ")::int AS month_num,
-        MIN(q."TN") OVER (
-            PARTITION BY q."NUM_POSTE", EXTRACT(MONTH FROM q."AAAAMMJJ")
-            ORDER BY q."AAAAMMJJ"
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tn AS val,
+        EXTRACT(MONTH FROM q.date)::int AS month_num,
+        MIN(q.tn) OVER (
+            PARTITION BY q.station_code, EXTRACT(MONTH FROM q.date)
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TN" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tn IS NOT NULL
 ),
 
 -- -------------------------------------------------------------------------
@@ -120,54 +120,54 @@ tn_monthly AS (
 
 tx_seasonal AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TX" AS val,
-        CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tx AS val,
+        CASE EXTRACT(MONTH FROM q.date)::int
             WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
             WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
             WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
             WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
         END AS season_val,
-        MAX(q."TX") OVER (
-            PARTITION BY q."NUM_POSTE",
-                CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        MAX(q.tx) OVER (
+            PARTITION BY q.station_code,
+                CASE EXTRACT(MONTH FROM q.date)::int
                     WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
                     WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
                     WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
                     WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
                 END
-            ORDER BY q."AAAAMMJJ"
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TX" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tx IS NOT NULL
 ),
 
 tn_seasonal AS (
     SELECT
-        q."NUM_POSTE",
-        q."AAAAMMJJ",
-        q."TN" AS val,
-        CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        q.station_code AS "NUM_POSTE",
+        q.date AS "AAAAMMJJ",
+        q.tn AS val,
+        CASE EXTRACT(MONTH FROM q.date)::int
             WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
             WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
             WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
             WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
         END AS season_val,
-        MIN(q."TN") OVER (
-            PARTITION BY q."NUM_POSTE",
-                CASE EXTRACT(MONTH FROM q."AAAAMMJJ")::int
+        MIN(q.tn) OVER (
+            PARTITION BY q.station_code,
+                CASE EXTRACT(MONTH FROM q.date)::int
                     WHEN 12 THEN 'winter' WHEN 1 THEN 'winter' WHEN 2 THEN 'winter'
                     WHEN  3 THEN 'spring' WHEN 4 THEN 'spring' WHEN 5 THEN 'spring'
                     WHEN  6 THEN 'summer' WHEN 7 THEN 'summer' WHEN 8 THEN 'summer'
                     WHEN  9 THEN 'autumn' WHEN 10 THEN 'autumn' WHEN 11 THEN 'autumn'
                 END
-            ORDER BY q."AAAAMMJJ"
+            ORDER BY q.date
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS prev_val
-    FROM public."Quotidienne" q
-    WHERE q."TN" IS NOT NULL
+    FROM public.v_quotidienne q
+    WHERE q.tn IS NOT NULL
 )
 
 -- All-time chaud

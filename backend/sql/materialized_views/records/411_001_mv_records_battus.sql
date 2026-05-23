@@ -61,10 +61,13 @@ FROM public.v_records_battus;
 -- INDEX
 -- ============================================================================
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_mv_records_battus_query
+ON public.mv_records_battus (record_type, period_type, period_value, station_code, record_date);
+
 -- Index principal utilisé par l'endpoint (filtre sur les 3 colonnes de recherche)
-CREATE INDEX idx_mv_records_battus_query
+CREATE INDEX IF NOT EXISTS idx_mv_records_battus_query
 ON public.mv_records_battus (record_type, period_type, period_value);
 
 -- Index secondaire pour les requêtes par station (diagnostic, admin)
-CREATE INDEX idx_mv_records_battus_station
+CREATE INDEX IF NOT EXISTS idx_mv_records_battus_station
 ON public.mv_records_battus (station_code);

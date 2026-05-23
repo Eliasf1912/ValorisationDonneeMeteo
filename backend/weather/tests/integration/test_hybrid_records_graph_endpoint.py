@@ -30,6 +30,10 @@ from weather.tests.helpers.stations import insert_station
 # Bootstrap actuel utilise le data source MV-only, donc le endpoint en prod ne
 # passe plus par ce code path. Tests conservés pour la ré-activation future.
 
+pytestmark = pytest.mark.skip(
+    reason="mv_records_battus-only datasource ignores post-cutoff realtime graph data"
+)
+
 URL = "/api/v1/temperature/records/graph"
 
 
