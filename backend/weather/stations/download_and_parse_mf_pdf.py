@@ -139,6 +139,7 @@ def get_meteofrance_data_dict(
     *,
     update=False,
     itn_only=False,
+    station_filter: set[StationCode] | None = None,
     max_pdfs=DEFAULT_MAX_PDFS_TO_READ,
     keep_pdf=False,
     parallelism=1,
@@ -156,6 +157,7 @@ def get_meteofrance_data_dict(
             station_id is None
             or station_id in seen_station_ids
             or (itn_only and station_id not in ITN_STATIONS_IDS)
+            or (station_filter is not None and station_id not in station_filter)
         ):
             continue
 
@@ -513,6 +515,13 @@ def write_outputs(
     writer.write_csv("stations_lifecycle.csv", prepare_lifecycle_csv_rows(data_dict))
 
 
+def parse_station_ids(value: str) -> set[StationCode]:
+    ids = {part.strip() for part in value.split(",") if part.strip()}
+    if not ids:
+        raise argparse.ArgumentTypeError("no station IDs provided")
+    return ids
+
+
 def parse_cli_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Download and parse Météo-France station PDF files.",
@@ -548,6 +557,14 @@ def parse_cli_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Restrict processing to ITN stations only (default: all stations).",
+    )
+    parser.add_argument(
+        "--station",
+        type=parse_station_ids,
+        default=None,
+        dest="station_filter",
+        metavar="ID[,ID...]",
+        help="Process only these comma-separated station IDs (e.g. 13054001,06088001).",
     )
     parser.add_argument(
         "--max",
@@ -596,6 +613,7 @@ def main() -> None:
     data_dict = get_meteofrance_data_dict(
         update=args.update,
         itn_only=args.itn,
+        station_filter=args.station_filter,
         max_pdfs=args.max_pdfs,
         keep_pdf=args.save_pdf,
         parallelism=args.parallelism,

@@ -1,3 +1,5 @@
+import argparse
+
 import pytest
 
 from .download_and_parse_mf_pdf import (
@@ -13,6 +15,7 @@ from .download_and_parse_mf_pdf import (
     extract_creation_date,
     extract_departement,
     extract_id,
+    parse_station_ids,
 )
 
 
@@ -30,6 +33,26 @@ from .download_and_parse_mf_pdf import (
 )
 def test_extract_id(pdf_url, expected):
     assert extract_id(pdf_url) == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("13054001", {"13054001"}),
+        ("13054001,06088001", {"13054001", "06088001"}),
+        (" 13054001 , 06088001 ", {"13054001", "06088001"}),
+        ("13054001,", {"13054001"}),
+        ("13054001,13054001", {"13054001"}),
+    ],
+)
+def test_parse_station_ids(value, expected):
+    assert parse_station_ids(value) == expected
+
+
+@pytest.mark.parametrize("value", ["", ",", " , ", "  "])
+def test_parse_station_ids_rejects_empty(value):
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_station_ids(value)
 
 
 @pytest.mark.parametrize(
