@@ -5,7 +5,6 @@ import { departements } from "~/data/records/departements";
 import { dateToStringYMD } from "~/utils/date";
 import { expandClasseRange } from "~/utils/classeFilter";
 import type {
-    PeriodType,
     Season,
     TemperatureRecordFlatEntry,
     TemperatureRecordsParams,
@@ -235,13 +234,13 @@ export const useRecordsTableStore = defineStore("recordsTableStore", () => {
         };
 
         if (periodSelection.value.startsWith("season_")) {
-            result.period_type = "season" as PeriodType;
+            result.period_type = "season";
             result.season = periodSelection.value.replace(
                 "season_",
                 "",
             ) as Season;
         } else if (periodSelection.value.startsWith("month_")) {
-            result.period_type = "month" as PeriodType;
+            result.period_type = "month";
             result.month = parseInt(
                 periodSelection.value.replace("month_", ""),
             );
