@@ -686,7 +686,7 @@ SELECT
     baseline_mean_tntxm
 FROM public.v_baseline_station_daily_mean_1991_2020;
 
-CREATE INDEX IF NOT EXISTS idx_mv_baseline_station_daily_mean
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_baseline_station_daily_mean
 ON public.mv_baseline_station_daily_mean_1991_2020 (station_code, month, day);
 
 CREATE OR REPLACE VIEW public.v_station_itn AS

@@ -95,5 +95,5 @@ FROM public.v_baseline_station_daily_mean_1991_2020;
 -- INDEX
 -- ============================================================================
 
-CREATE INDEX idx_mv_baseline_station_daily_mean
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_baseline_station_daily_mean
 ON public.mv_baseline_station_daily_mean_1991_2020 (station_code, month, day);
