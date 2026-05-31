@@ -2,6 +2,7 @@
 import type { DropdownMenuItem } from "@nuxt/ui";
 import type { SelectBarAdapter } from "./selectBar/types";
 import { useMapColors } from "~/constants/colors";
+import langFR from "~/i18n/langFR.js";
 
 const mapColors = useMapColors();
 const colorMode = useColorMode();
@@ -117,6 +118,16 @@ function exportAsHTML() {
     if (!import.meta.client) return;
     if (!chartRef?.value) return;
     const options = chartRef.value.getOption();
+    // JSON.stringify supprime les fonctions : on évalue min/max avant sérialisation
+    // pour que l'export HTML ait les mêmes bornes d'axe que le graphe interactif.
+    if (Array.isArray(options.xAxis)) {
+        (options.xAxis as { min?: unknown; max?: unknown }[]).forEach(
+            (axis) => {
+                if (typeof axis.min === "function") axis.min = axis.min();
+                if (typeof axis.max === "function") axis.max = axis.max();
+            },
+        );
+    }
     const scriptTag = "script";
     const tooltipFormatterScript = exportConfig.htmlTooltipFormatter
         ? `[options.tooltip].flat().filter(Boolean).forEach(function(t){ t.formatter = ${exportConfig.htmlTooltipFormatter}; });`
@@ -132,7 +143,8 @@ function exportAsHTML() {
 <body>
     <div id="chart"></div>
     <${scriptTag}>
-        const chart = echarts.init(document.getElementById('chart'));
+        echarts.registerLocale('FR', ${JSON.stringify(langFR)});
+        const chart = echarts.init(document.getElementById('chart'), null, { locale: 'FR' });
         const options = ${JSON.stringify(options)};
         ${tooltipFormatterScript}
         chart.setOption(options);
