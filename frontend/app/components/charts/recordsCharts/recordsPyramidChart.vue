@@ -94,12 +94,13 @@ const option = computed<ECOption>(() => {
     const labelMargin = Math.round(
         ((rightOfLeftGridPercent - 50) / 100) * containerWidth.value,
     );
-    const slotSize = 100 / N;
+    const BOTTOM_RESERVED = 14;
+    const slotSize = (100 - BOTTOM_RESERVED) / N;
 
     // Positions verticales du subplot i dans le conteneur (en %)
     const gridTop = (i: number) => `${i * slotSize + 4}%`;
     const gridBottom = (i: number) =>
-        i === N - 1 ? "12%" : `${(N - 1 - i) * slotSize + 4}%`;
+        `${BOTTOM_RESERVED + (N - 1 - i) * slotSize + 4}%`;
 
     const xAxisBase: Partial<ValueXAxisOption> = {
         min: 0,
@@ -177,7 +178,7 @@ const option = computed<ECOption>(() => {
             ...periodData.map((pd, i) => ({
                 text: pd.name,
                 right: "right",
-                top: `${i * slotSize + 2}%`,
+                top: `${i * slotSize}%`,
                 textStyle: { fontSize: FONT_CHARTS.title },
             })),
             {
