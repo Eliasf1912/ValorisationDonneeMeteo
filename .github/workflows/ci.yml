@@ -21,7 +21,7 @@ jobs:
       - run: cd frontend && npm ci
 
       - name: run test
-        run: cd frontend && npm run test:ci
+        run: cd frontend && npm run test:unit
 
       - name: run linter
         run: cd frontend && npm run lint
