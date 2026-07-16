@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  install-frontend:
+    - steps:
+        - name: checkout frontend
+          uses: actions/checkout@v4
+
+        - name: install node and dependencies
+          uses: actions/setup-node@v4
+          with:
+            node-version: "24"
+            cache: npm
+            cache-dependency-path: "frontend/package-lock.json"
+        - run: cd frontend && npm ci
+
+        - name: run test
+          run: cd frontend && npm test:ci
+
+        - name: run linter
+          run: cd frontend && npm run lint
