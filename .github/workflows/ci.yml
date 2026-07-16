@@ -28,7 +28,7 @@ jobs:
 
   Security-scan-frontend:
     needs: [install-frontend]
-    run-on: unbuntu-latest
+    runs-on: unbuntu-latest
     steps:
       - name: checkout Security
         uses: actions/checkout@v4
