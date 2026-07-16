@@ -1,0 +1,23 @@
+name: CI-front
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  installDep:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: EnvPrep
+        uses: actions/checkout@v6
+
+      - name: install dependencies
+        run: cd frontend && npm install
+
+      - name: testing
+        run: npm run test:unit
+
+      - name: linter
+        run: cd frontend && npm run lint
