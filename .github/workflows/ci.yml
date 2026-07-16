@@ -25,3 +25,21 @@ jobs:
 
       - name: run linter
         run: cd frontend && npm run lint
+
+  Security-scan-frontend:
+    needs: [install-frontend]
+    run-on: unbuntu-latest
+    steps:
+      - name: checkout Security
+        uses: actions/checkout@v4
+      - name: run trivy scan
+        usees: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "./frontend"
+          format: "sarif"
+          output: "trivy-results.sarif"
+      - name: Upload results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.sarif"
