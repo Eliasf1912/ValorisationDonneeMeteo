@@ -39,6 +39,7 @@ jobs:
           scan-ref: "./frontend"
           format: "sarif"
           output: "trivy-results.sarif"
+          exit-code: "1"
       - name: Upload results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
