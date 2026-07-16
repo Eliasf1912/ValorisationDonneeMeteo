@@ -17,7 +17,7 @@ jobs:
         run: cd frontend && npm install
 
       - name: testing
-        run: npm run test:unit
+        run: cd frontend && npm run test:unit
 
       - name: linter
         run: cd frontend && npm run lint
