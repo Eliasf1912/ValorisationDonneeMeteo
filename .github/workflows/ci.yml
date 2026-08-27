@@ -38,7 +38,6 @@ jobs:
       - name: install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
         with:
-          version: "1"
           python-version: "3.13"
           enable-cache: true
           cache-dependency-glob: "backend/uv.lock"
@@ -112,14 +111,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: lowercase repo owner
+        id: repo-owner
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: build and push
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-backend:latest
-            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-backend:${{ github.sha }}
+            ghcr.io/${{ steps.repo-owner.outputs.owner }}/14_valorisationdonneemeteo-backend:latest
+            ghcr.io/${{ steps.repo-owner.outputs.owner }}/14_valorisationdonneemeteo-backend:${{ github.sha }}
 
   build-and-push-frontend:
     needs: [Security-scan-frontend]
@@ -139,11 +142,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: lowercase repo owner
+        id: repo-owner
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: build and push
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-frontend:${{ github.sha }}
+            ghcr.io/${{ steps.repo-owner.outputs.owner }}/14_valorisationdonneemeteo-frontend:latest
+            ghcr.io/${{ steps.repo-owner.outputs.owner }}/14_valorisationdonneemeteo-frontend:${{ github.sha }}
