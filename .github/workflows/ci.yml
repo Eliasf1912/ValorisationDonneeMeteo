@@ -43,7 +43,7 @@ jobs:
           cache-dependency-glob: "backend/uv.lock"
 
       - name: install dependencies
-        run: cd backend && uv sync --extra dev
+        run: cd backend && uv sync --group dev
 
       - name: run test
         run: cd backend && uv run pytest weather/tests/unit
