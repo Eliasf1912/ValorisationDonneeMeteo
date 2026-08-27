@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -26,6 +29,29 @@ jobs:
       - name: run linter
         run: cd frontend && npm run lint
 
+  install-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout backend
+        uses: actions/checkout@v4
+
+      - name: install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "1"
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: install dependencies
+        run: cd backend && uv sync --extra dev
+
+      - name: run test
+        run: cd backend && uv run pytest weather/tests/unit
+
+      - name: run linter
+        run: cd backend && uv run ruff check
+
   Security-scan-frontend:
     needs: [install-frontend]
     runs-on: ubuntu-latest
@@ -45,3 +71,79 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
+          category: "front-end analysis"
+
+  Security-scan-backend:
+    needs: [install-backend]
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: checkout Security
+        uses: actions/checkout@v4
+      - name: run trivy scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: "fs"
+          scan-ref: "./backend"
+          format: "sarif"
+          output: "trivy-results.sarif"
+      - name: Upload results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.sarif"
+          category: "back-end analysis"
+
+  build-and-push-backend:
+    needs: [Security-scan-backend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-backend:latest
+            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-backend:${{ github.sha }}
+
+  build-and-push-frontend:
+    needs: [Security-scan-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-frontend:latest
+            ghcr.io/${{ github.repository_owner }}/14_valorisationdonneemeteo-frontend:${{ github.sha }}
