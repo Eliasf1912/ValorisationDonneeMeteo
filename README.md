@@ -1,244 +1,99 @@
-# Valorisation Donnée Météo
+# CI/CD & Monitoring - Etat du projet
 
-![CI](https://github.com/dataforgoodfr/14_ValorisationDonneeMeteo/actions/workflows/ci.yml/badge.svg)
+Ce document resume ce qui a ete mis en place cote CI/CD et monitoring (Prometheus), pour que l'equipe s'y retrouve facilement.
 
-Projet Data For Good - Saison 14
+---
 
-## Structure du projet
+## 1. CI/CD (GitHub Actions)
 
-```
-├── backend/    # API et traitement des données (Python)
-├── frontend/   # Interface utilisateur
-```
+Fichier : `.github/workflows/ci.yml`
 
-## Pour commencer
+### Declencheurs
 
-Consultez les README de chaque sous-projet :
+- `pull_request` vers `main`
+- `push` sur `main`
 
-- [Backend](backend/README.md)
-- [Frontend](frontend/README.md)
+### Jobs
 
-## Contribuer
+| Job                       | Role                                                                  |
+| ------------------------- | --------------------------------------------------------------------- |
+| `install-frontend`        | install deps, run tests (Vitest), run linter                          |
+| `install-backend`         | install deps (uv), run tests (pytest), run linter (ruff)              |
+| `Security-scan-frontend`  | scan Trivy (frontend)                                                 |
+| `Security-scan-backend`   | scan Trivy (backend)                                                  |
+| `build-and-push-frontend` | build et push image Docker sur GHCR (uniquement sur push vers `main`) |
+| `build-and-push-backend`  | build et push image Docker sur GHCR (uniquement sur push vers `main`) |
 
-Ce projet fait partie de la saison 14 de Data For Good.
+### Ce qui est genere a chaque run (artifacts telechargeables)
 
-## Utilisation de Git
+Dans Actions, choisir un run, section Artifacts en bas de page :
 
-Le projet utilise la branche `main` comme branche principale.
+- `frontend-test-report` / `backend-test-report` : resultats de tests au format JUnit XML
+- `frontend-trivy-report` / `backend-trivy-report` : rapport de scan securite Trivy (JSON, lisible en dehors de GitHub)
+- `frontend-vex` / `backend-vex` : fichier VEX (format OpenVEX)
 
-## Workflow de contribution
+Le scan Trivy est aussi envoye en SARIF vers l'onglet Security du repo (alertes classiques GitHub).
 
-Lire attentivement nos bonnes pratiques de développement : [Branches et commits : Workflow de contribution](https://outline.services.dataforgood.fr/doc/onboarding-dev-OFGKWOcxOn)
+### Fichier VEX
 
-Extraits :
+Le fichier VEX genere declare un statut `not_affected` de facon generique pour tout le produit, pas vulnerabilite par vulnerabilite. Ce niveau est considere suffisant pour le projet : le format et le pipeline sont en place et repondent a la consigne. Reste tel quel, aucune action supplementaire requise.
 
-### :tanabata_tree:Branches et commits : Workflow de contribution
+### Build et push Docker
 
-Pour que tout le monde adopte les mêmes pratiques, nous avons posé des principes relatifs aux branches et aux commits. A lire impérativement avant de commencer.
+- Registry : GHCR (`ghcr.io`)
+- Se declenche uniquement sur un vrai push sur `main` (pas sur les PR), donc pas de pollution du registry a chaque PR
+- Images : `ghcr.io/<owner>/14_valorisationdonneemeteo-backend` et `-frontend`, tags `latest` et SHA du commit
 
-#### 0. **Paramétrer git**
+### Badge CI
 
-```bash
-git config --local pull.rebase merges
-git config --local rebase.autostash true
-```
+Ajoute dans le README principal du projet.
 
-- `pull.rebase merges` applique vos commits locaux par-dessus le remote.
-- `rebase.autostash true` permet de stasher automatiquement vos changements locaux non commités avant de faire un pull/rebase, et de les réappliquer après. Cela évite les conflits liés à des changements locaux non commités lors du pull/rebase.
+### Pipeline testing (valide)
 
-#### 1. **Créer une branche depuis** `**main**`
+Un test a ete volontairement casse sur une PR pour verifier que la CI le detecte (job passe en rouge, jobs dependants correctement skippes). Le test a ensuite ete corrige, la PR mergee, tout repasse au vert. Comportement confirme de bout en bout.
 
-```bash
-git checkout main
-git pull origin main
-git checkout -b <type>/(<scope>/)?<description-courte>
-```
+---
 
-Convention de nommage des branches :
+## 2. Monitoring - Prometheus
 
-- `feat/scope/nom-feature` : nouvelle fonctionnalité
-- `fix/scope/nom-bug` : correction de bug
-- `docs/sujet` : documentation
-- `refactor/sujet` : refactoring de code
-- `chore/sujet` : tâche de maintenance
+### Ce qui a ete fait
 
-Exemple : `feat/itn/ajout-carte-meteo` ou `fix/ecarts-normales/erreur-chargement-donnees`
+- Service `prometheus` ajoute dans `docker-compose.dev.yml`, sur le reseau `app_net`
+- Config dans `prometheus/prometheus.yml`
+- `django-prometheus` installe et configure cote backend (`INSTALLED_APPS`, middlewares before et after, route `/metrics` exposee)
+- Prometheus scrape avec succes :
+  - lui-meme (job `prometheus`, `localhost:9090`)
+  - le backend Django (job `backend`, `backend:8000`, nom du service Docker et non `localhost`, vu que Prometheus tourne dans le reseau Docker interne)
+- Verifie en interrogeant une vraie metrique applicative (`django_http_requests_total_by_method_total`) dans l'UI Prometheus (`localhost:9090`), resultat coherent avec les vraies requetes faites sur le backend
 
-#### 2. **Faire des commits atomiques**
-
-Un commit atomique = une seule modification logique. Cela permet de :
-
-- Faciliter la relecture du code
-- Simplifier un éventuel rollback
-- Garder un historique clair
+### Comment lancer
 
 ```bash
-git add <fichiers-concernés>
-git commit -m "<type>: (<scope>:)? <description>"
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-Format des messages de commit :
+UI Prometheus : `http://localhost:9090`
+Aller dans Status puis Targets pour voir l'etat des jobs scrapes (doit afficher `prometheus` et `backend` en UP)
 
-- `feat: itn: ajoute le composant carte météo`
-- `fix: ecarts normales: corrige l'affichage des températures négatives`
-- `docs: readme: mise à jour installation`
-- `refactor: parser: simplifie la logique de parsing`
-- `test: parser: ajoute les tests unitaires`
-- `chore: npm: met à jour les dépendances`
+### Note sur le lien metrics dans l'UI Prometheus
 
-Vous n'êtes pas obligé d'utiliser le terminal, vous pouvez utiliser n'importe quelle interface graphique, notamment celle de VSCode et JetBrains.
+Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer une erreur DNS car il utilise le hostname interne du conteneur. Ce n'est pas un bug : il suffit de taper `http://localhost:9090/metrics` directement dans la barre d'adresse pour acceder a l'endpoint depuis l'exterieur du reseau Docker.
 
-#### 3. **Pousser sa branche et créer une Pull Request (PR)**
+### Reste a faire cote Prometheus
 
-```bash
-git push origin <nom-de-ta-branche>
-```
+- Ajouter le frontend comme target si des metriques y sont exposees (a voir si pertinent selon la stack Nuxt)
 
-Puis sur GitHub, créer une PR vers `main` en :
+---
 
-- Donnant un titre clair et descriptif
-- Remplissant le template de PR
-- Assignant des reviewers
+## 3. Monitoring - Grafana (a faire, pris en charge par un autre membre de l'equipe)
 
-#### 4. **Review de code**
+- Ajouter l'image Grafana au docker-compose
+- Ajouter une datasource pointant vers Prometheus : utiliser `http://prometheus:9090` (nom du service Docker, reseau interne, pas `localhost`)
+- Construire un dashboard avec des visualisations pertinentes des metriques backend
 
-Chaque PR doit être relue par au moins une personne avant d'être mergée.
+---
 
-En tant que reviewer :
+## 4. Docker Hardened Image (pas encore commence)
 
-- Vérifier que le code fonctionne et respecte les conventions du projet
-- Poser des questions si quelque chose n'est pas clair
-- Proposer des améliorations de manière constructive
-
-En tant qu'auteur :
-
-- Répondre aux commentaires
-- Effectuer les modifications demandées
-- Demander une nouvelle review si nécessaire
-
-#### 5. **Merge avec squash commit**
-
-Une fois la PR approuvée, on merge en utilisant **"Squash and merge"** sur GitHub. Cela combine tous les commits de la branche en un seul commit sur `main`, ce qui garde un historique propre.
-
-### Bonnes pratiques
-
-- **Synchroniser régulièrement** sa branche avec `main` pour éviter les conflits :
-
-```bash
-git checkout main
-git pull origin main
-git checkout <ta-branche>
-git rebase main
-```
-
-- **Ne jamais pusher directement sur** `**main**`
-- **Garder ses PRs petites** : une PR = une fonctionnalité ou un fix. Les grosses PRs sont difficiles à relire
-- **Tester son code** avant de pousser
-
-### :male_technologist:Éditeur de code
-
-Nous conseillons (surtout pour les débutants) de travailler avec [Visual Studio Code](https://code.visualstudio.com/) (VSCode pour les intimes).
-Voici un [tuto](https://data-for-good.slack.com/archives/C08B329AG7M/p1738330293159749) pour l'usage de VSCode, l’installation de Python, et faire tourner son premier notebook dans VSCode.
-
-Pour les plus avancés, nous conseillons la suite JetBrains, notamment WebStorm et PyCharm en version gratuite.
-
-Pensez à activer le formattage et le fix automatique lors de la sauvegarde :
-
-- [VSCode](.vscode/settings.json)
-- JetBrains : Tools → Actions on Save :
-  - Reformat Code
-  - Optimize Imports
-  - Run eslint --fix
-  - Run Prettier
-
-## Installation des pre-commit hooks
-
-Ce projet utilise [pre-commit](https://pre-commit.com/) pour automatiser la vérification de la qualité du code avant chaque commit.
-
-### Installer pre-commit sur votre machine
-
-#### Via pip
-
-```bash
-pip install pre-commit
-```
-
-### Activer les hooks
-
-```bash
-# À la racine du projet
-pre-commit install
-```
-
-### Configuration
-
-Le projet utilise deux configurations de pre-commit :
-
-1. **Configuration racine** (`.pre-commit-config.yaml`) :
-
-- Exécute les hooks backend et frontend
-- Vérifie les conflits de merge, les fins de ligne, etc.
-
-2. **Configuration backend** (`backend/.pre-commit-config.yaml`) :
-
-- Utilise Ruff pour le linting et le formatting Python
-- Lance les tests unitaires backend avec `uv run pytest weather/tests/unit`
-- Lance les tests d'intégration backend avec `uv run pytest weather/tests/integration`
-- Centralise l'ignore de `DJ001` dans `backend/pyproject.toml`
-
-### Exécution manuelle
-
-Pour exécuter tous les hooks sur tous les fichiers :
-
-```bash
-pre-commit run --all-files
-```
-
-Pour exécuter uniquement les hooks backend :
-
-```bash
-cd backend && uv run pre-commit run --all-files --config=.pre-commit-config.yaml
-```
-
-Pour exécuter uniquement tous les tests backend :
-
-```bash
-cd backend && uv run pytest
-```
-
-Pour exécuter uniquement les tests unitaires backend :
-
-```bash
-cd backend && uv run pytest weather/tests/unit
-```
-
-Pour exécuter uniquement les tests d'intégration backend :
-
-```bash
-cd backend && uv run pytest weather/tests/integration
-```
-
-Pour exécuter uniquement les hooks frontend :
-
-```bash
-cd frontend && npm run check
-```
-
-### Résolution des problèmes courants
-
-#### Problème d'environnement Node.js
-
-Si vous avez des problèmes de dépendances, essayez de supprimer le dossier `node_modules` et de réinstaller :
-
-```bash
-cd frontend
-rm -rf node_modules
-npm ci
-```
-
-### Outils utilisés
-
-- **Backend** : Ruff (linting + formatting) + pytest sur `weather/tests/unit`
-- **Frontend** : ESLint + Prettier
-- **Commun** : vérification des conflits, fins de ligne, etc.
-- **Commun** : vérification des conflits, fins de ligne, etc.
+- Trouver les images hardened Python et npm sur https://dhi.io
+- Adapter les Dockerfile (backend et frontend) pour utiliser ces images en base, dans une optique prod ready
