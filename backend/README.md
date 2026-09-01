@@ -1,320 +1,99 @@
-# Backend - API Meteo
+# CI/CD & Monitoring - Etat du projet
 
-API REST Django/DRF pour les donnees meteorologiques InfoClimat.
+Ce document resume ce qui a ete mis en place cote CI/CD et monitoring (Prometheus), pour que l'equipe s'y retrouve facilement.
 
-## Prerequis
+---
 
-- Python >= 3.12
-- [uv](https://docs.astral.sh/uv/) pour la gestion des dependances
-- Docker (pour TimescaleDB)
+## 1. CI/CD (GitHub Actions)
 
-## Installation
+Fichier : `.github/workflows/ci.yml`
 
-```bash
-cd backend
+### Declencheurs
 
-# Installer les dépendances, ainsi que les dépendances optionnelles de dev
-uv sync --extra dev
+- `pull_request` vers `main`
+- `push` sur `main`
 
-# Copier la configuration (utile pour le backend, pas pour le seed DB)
-cp .env.example .env
-```
+### Jobs
 
-## Demarrer TimescaleDB
+| Job                       | Role                                                                  |
+| ------------------------- | --------------------------------------------------------------------- |
+| `install-frontend`        | install deps, run tests (Vitest), run linter                          |
+| `install-backend`         | install deps (uv), run tests (pytest), run linter (ruff)              |
+| `Security-scan-frontend`  | scan Trivy (frontend)                                                 |
+| `Security-scan-backend`   | scan Trivy (backend)                                                  |
+| `build-and-push-frontend` | build et push image Docker sur GHCR (uniquement sur push vers `main`) |
+| `build-and-push-backend`  | build et push image Docker sur GHCR (uniquement sur push vers `main`) |
 
-```bash
-cd timescaledb-env
-docker compose up -d timescaledb
-cd ..
-```
+### Ce qui est genere a chaque run (artifacts telechargeables)
 
-## Données Simulées
+Dans Actions, choisir un run, section Artifacts en bas de page :
 
-Il est possible de lancer le projet sans utiliser de base de données.
-Les données servies par l'API sont alors des données simulées.
-Pour ce faire, mettre dans .env :
+- `frontend-test-report` / `backend-test-report` : resultats de tests au format JUnit XML
+- `frontend-trivy-report` / `backend-trivy-report` : rapport de scan securite Trivy (JSON, lisible en dehors de GitHub)
+- `frontend-vex` / `backend-vex` : fichier VEX (format OpenVEX)
 
-```
-MOCKED_DATA=true
-```
+Le scan Trivy est aussi envoye en SARIF vers l'onglet Security du repo (alertes classiques GitHub).
 
-Si au contraire on souhaite utiliser une vraie base de données, voir la section Initialiser la base de développement ci-dessous.
+### Fichier VEX
 
-_Note_ : Même si l'on souhaite utiliser des données simulées, il convient de lancer timescaledb comme indiqué au paragraphe précédent.
+Le fichier VEX genere declare un statut `not_affected` de facon generique pour tout le produit, pas vulnerabilite par vulnerabilite. Ce niveau est considere suffisant pour le projet : le format et le pipeline sont en place et repondent a la consigne. Reste tel quel, aucune action supplementaire requise.
 
-## Initialiser la base de développement
+### Build et push Docker
 
-Contrairement aux premières versions du projet, la base de développement n'est pas générée par Django.
-Elle est initialisée via un conteneur dédié (db-seed) afin de ne pas dépendre d’un psql installé localement.
+- Registry : GHCR (`ghcr.io`)
+- Se declenche uniquement sur un vrai push sur `main` (pas sur les PR), donc pas de pollution du registry a chaque PR
+- Images : `ghcr.io/<owner>/14_valorisationdonneemeteo-backend` et `-frontend`, tags `latest` et SHA du commit
 
-Elle est alimentée par :
+### Badge CI
 
-- un schéma SQL
-- un dump des stations
-- un export CSV des données quotidiennes (2024–2025)
-- un export CSV des stations classées
-- un export CSV des stations avec leur date de création et fermeture
-- des vues SQL utilisées par Django
-- des baselines climatologiques pré-calculées (1991–2020) importées depuis des CSV
+Ajoute dans le README principal du projet.
 
-### Fichiers requis
+### Pipeline testing (valide)
 
-Tous les fichiers doivent être présents dans :
+Un test a ete volontairement casse sur une PR pour verifier que la CI le detecte (job passe en rouge, jobs dependants correctement skippes). Le test a ensuite ete corrige, la PR mergee, tout repasse au vert. Comportement confirme de bout en bout.
 
-backend/db_data/
+---
 
-Liste des fichiers attendus :
+## 2. Monitoring - Prometheus
 
-- station.sql
-- quotidienne_2024_2025.csv
-- itn_baseline_9120.csv
-- itn_baseline_monthly_9120.csv
-- itn_baseline_yearly_9120.csv
-- baseline_stations_daily_mean_9120.csv
-- station_classe.csv
-- station_creation_date.csv
+### Ce qui a ete fait
 
-⚠️ Si un de ces fichiers est absent, le seed échouera.
+- Service `prometheus` ajoute dans `docker-compose.dev.yml`, sur le reseau `app_net`
+- Config dans `prometheus/prometheus.yml`
+- `django-prometheus` installe et configure cote backend (`INSTALLED_APPS`, middlewares before et after, route `/metrics` exposee)
+- Prometheus scrape avec succes :
+  - lui-meme (job `prometheus`, `localhost:9090`)
+  - le backend Django (job `backend`, `backend:8000`, nom du service Docker et non `localhost`, vu que Prometheus tourne dans le reseau Docker interne)
+- Verifie en interrogeant une vraie metrique applicative (`django_http_requests_total_by_method_total`) dans l'UI Prometheus (`localhost:9090`), resultat coherent avec les vraies requetes faites sur le backend
 
-### Initialisation
+### Comment lancer
 
 ```bash
-cd backend/timescaledb-env
-docker compose run --rm db-seed
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-Ce que fait le script
+UI Prometheus : `http://localhost:9090`
+Aller dans Status puis Targets pour voir l'etat des jobs scrapes (doit afficher `prometheus` et `backend` en UP)
 
-- recrée le schéma public
-- crée les tables sources (Station, Quotidienne, station_classe, station_creation_date)
-- importe les données : stations, données quotidiennes
-- applique les vues SQL utilisées par l’API
-- importe les baselines climatologiques depuis des CSV :
-  - baseline ITN → v_itn_baseline_daily_1991_2020
-  - baseline ITN par mois → v_itn_baseline_monthly_1991_2020
-  - baseline ITN par an → v_itn_baseline_yearly_1991_2020
-  - baseline par station → mv_baseline_station_daily_mean_1991_2020
+### Note sur le lien metrics dans l'UI Prometheus
 
-## Lancer le serveur
+Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer une erreur DNS car il utilise le hostname interne du conteneur. Ce n'est pas un bug : il suffit de taper `http://localhost:9090/metrics` directement dans la barre d'adresse pour acceder a l'endpoint depuis l'exterieur du reseau Docker.
 
-```bash
-# Demarrer le serveur de developpement
-uv run python manage.py runserver
-```
+### Reste a faire cote Prometheus
 
-L'API est disponible sur http://localhost:8000
+- Ajouter le frontend comme target si des metriques y sont exposees (a voir si pertinent selon la stack Nuxt)
 
-## Architecture des données
+---
 
-Le backend ne manipule pas directement les tables sources via l'ORM Django.
+## 3. Monitoring - Grafana (a faire, pris en charge par un autre membre de l'equipe)
 
-Les modèles Django sont basés sur des views SQL.
+- Ajouter l'image Grafana au docker-compose
+- Ajouter une datasource pointant vers Prometheus : utiliser `http://prometheus:9090` (nom du service Docker, reseau interne, pas `localhost`)
+- Construire un dashboard avec des visualisations pertinentes des metriques backend
 
-```
-Station (table source)
-Quotidienne (table source)
+---
 
-      ↓
-v_station_qualifiee_hexagone
-v_quotidienne
+## 4. Docker Hardened Image (pas encore commence)
 
-      ↓
-
-models Django
-
-      ↓
-
-Data sources (Python)
-
-      ↓
-
-Services métier
-
-      ↓
-
-API REST
-```
-
-Cela permet :
-
-- de stabiliser l'API
-- d'éviter les dépendances directes au schéma source
-
-## API
-
-### Spécifications
-
-Les spécifications de l'API (la cible a atteindre) sont disponibles dans `openapi/target-specs/openapi.yaml`
-
-```bash
-cd backend
-
-npx swagger-ui-watcher openapi/target-specs/openapi.yaml
-```
-
-La documentation est alors disponible sur `http://localhost:8000`
-
-| Endpoint                                 | Description                        |
-|------------------------------------------|------------------------------------|
-| `/api/v1/stations/`                      | Liste des stations meteo           |
-| `/api/v1/temperature/national-indicator` | Indicateur thermique national      |
-| `/api/v1/temperature/deviation`          | Écart à la normale                 |
-| `/api/v1/temperature/records`            | Records de température par station |
-
-## Exemples de requetes
-
-```bash
-#Liste des stations :
-curl -L http://localhost:8000/api/v1/stations/
-curl -L http://localhost:8000/api/v1/stations?departement=13
-
-#Indicateur thermique national :
-curl "http://localhost:8000/api/v1/temperature/national-indicator?date_start=2025-01-01&date_end=2025-01-31&granularity=month"
-
-# Écart à la normale — OVERVIEW (table + carte)
-curl "http://localhost:8000/api/v1/temperature/deviation?date_start=2024-01-01&date_end=2024-01-31"
-
-# Exemple avec filtres géographiques et altimétriques
-curl "http://localhost:8000/api/v1/temperature/deviation?date_start=2024-01-01&date_end=2024-01-31&departments=13,75&regions=Île-de-France&alt_min=100&alt_max=500&ordering=-deviation&page=1&page_size=20"
-
-# Exemple avec filtres sur la qualité et le cycle de vie des stations
-curl "http://localhost:8000/api/v1/temperature/deviation?date_start=2024-01-01&date_end=2024-01-31&classe_recente_min=1&classe_recente_max=2&date_de_creation_max=1950-01-01&date_de_fermeture_min=2000-01-01"
-
-# Écart à la normale — GRAPH
-curl "http://localhost:8000/api/v1/temperature/deviation/graph?date_start=2024-01-01&date_end=2024-01-31&granularity=day&station_ids=07149,07222"
-
-#Records de température
-curl "http://localhost:8000/api/v1/temperature/records?period_type=all_time&type_records=hot"
-curl "http://localhost:8000/api/v1/temperature/records?period_type=month&month=7&type_records=hot"
-
-# Records — filtrer par classe et cycle de vie de la station
-curl "http://localhost:8000/api/v1/temperature/records?type_records=hot&classe_recente_min=1&classe_recente_max=2"
-curl "http://localhost:8000/api/v1/temperature/records?type_records=hot&date_de_creation_min=1950-01-01&date_de_fermeture_min=2000-01-01"
-```
-
-## Structure du projet
-
-```
-.
-├── config
-├── db_data                      # data files to seed the de db - not commited
-├── Dockerfile
-├── manage.py
-├── notebooks                   # some explorations
-├── openapi
-│   └── target-specs
-│       └── openapi.yaml         # API target specs
-├── pyproject.toml
-├── README.md
-├── scripts                      # non run time scripts (seed dev db, ...)
-│   ├── apply_views.sh
-│   └── seed_dev.sh
-├── sql
-├── timescaledb-env             # dev db env
-├── tox.ini
-├── uv.lock
-└── weather
-    ├── apps.py
-    ├── bootstrap_itn.py
-    ├── data_generators
-    ├── filters.py
-    ├── __init__.py
-    ├── management
-    ├── migrations               # empty
-    ├── models.py
-    ├── serializers.py
-    ├── services
-    ├── tests
-    ├── urls.py
-    ├── utils
-    └── views.py
-```
-
-## Developpement
-
-### Pre-commit hooks
-
-_L'installation des hooks est décrite dans le [README.md](../README.md) à la racine_
-
-Pour exécuter les hooks backend uniquement :
-
-```bash
-# Avec uv (recommandé)
-cd backend
-uv run pre-commit run --all-files --config=.pre-commit-config.yaml
-```
-
-Les hooks backend exécutent Ruff et les tests unitaires backend (`uv run pytest weather/tests/unit`).
-
-### Tests
-
-```bash
-# Tests unitaires
-uv run pytest weather/tests/unit
-
-# Tests d'intégration
-uv run pytest weather/tests/integration
-
-# Tous les tests
-uv run pytest
-```
-
-### Linting
-
-```bash
-uv run ruff check .
-uv run ruff format .
-```
-
-## Configuration
-
-Les variables d'environnement sont definies dans `.env` :
-
-| Variable               | Description        | Defaut                  |
-|------------------------|--------------------|-------------------------|
-| `DEBUG`                | Mode debug         | `true`                  |
-| `SECRET_KEY`           | Cle secrete Django | -                       |
-| `DB_HOST`              | Hote PostgreSQL    | `localhost`             |
-| `DB_PORT`              | Port PostgreSQL    | `5432`                  |
-| `DB_NAME`              | Nom de la base     | `meteodb`               |
-| `DB_USER`              | Utilisateur        | `infoclimat`            |
-| `DB_PASSWORD`          | Mot de passe       | `infoclimat2026`        |
-| `CORS_ALLOWED_ORIGINS` | Origins CORS       | `http://localhost:5173` |
-
-### Connexion directe a la base de dev
-
-```bash
-docker exec -it infoclimat-timescaledb psql -U infoclimat -d meteodb
-
--- Voir les hypertables
-SELECT * FROM timescaledb_information.hypertables;
-
--- Voir les chunks (partitions)
-SELECT * FROM timescaledb_information.chunks;
-```
-
-## Notebooks
-
-### ITN
-
-Un notebook est disponible pour visualiser les données générées par le service national-indicator (fake datasource + agrégation).
-
-1️⃣ Installer les dépendances notebook
-
-Les dépendances notebook ne sont pas installées par défaut.
-
-Depuis le dossier backend/ :
-
-```bash
-uv sync --extra notebook
-```
-
-2️⃣ Lancer Jupyter
-
-Toujours depuis backend/ :
-
-```bash
-uv run jupyter lab
-```
-
-Puis ouvrir le notebook situé dans `weather/notebooks/`
+- Trouver les images hardened Python et npm sur https://dhi.io
+- Adapter les Dockerfile (backend et frontend) pour utiliser ces images en base, dans une optique prod ready
