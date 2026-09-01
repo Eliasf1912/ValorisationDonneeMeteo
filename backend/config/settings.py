@@ -31,6 +31,7 @@ MOCKED_DATA = env("MOCKED_DATA", False)
 
 # Application definition
 INSTALLED_APPS = [
+    "django_prometheus",
     # Third-party
     "rest_framework",
     "corsheaders",
@@ -45,9 +46,11 @@ if DEBUG:
     INSTALLED_APPS += ["django_extensions"]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
