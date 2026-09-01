@@ -24,7 +24,18 @@ jobs:
       - run: cd frontend && npm ci
 
       - name: run test
-        run: cd frontend && npm run test:unit
+        run: |
+          mkdir -p test-results
+          cd frontend
+          npx vitest --project unit --run --reporter=junit --outputFile=../test-results/frontend-junit.xml
+
+      - name: upload frontend test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-report
+          path: test-results/frontend-junit.xml
+          if-no-files-found: error
 
       - name: run linter
         run: cd frontend && npm run lint
@@ -46,7 +57,18 @@ jobs:
         run: cd backend && uv sync --group dev
 
       - name: run test
-        run: cd backend && uv run pytest weather/tests/unit
+        run: |
+          mkdir -p test-results
+          cd backend
+          uv run pytest weather/tests/unit --junitxml=../test-results/backend-junit.xml
+
+      - name: upload backend test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-report
+          path: test-results/backend-junit.xml
+          if-no-files-found: error
 
       - name: run linter
         run: cd backend && uv run ruff check
@@ -59,13 +81,78 @@ jobs:
     steps:
       - name: checkout Security
         uses: actions/checkout@v4
-      - name: run trivy scan
+
+      - name: run trivy scan (JSON artifact)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: "fs"
+          scan-ref: "./frontend"
+          format: "json"
+          output: "trivy-frontend-report.json"
+
+      - name: upload frontend trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-trivy-report
+          path: trivy-frontend-report.json
+          if-no-files-found: error
+
+      - name: generate frontend VEX file
+        env:
+          REPO_SLUG: ${{ github.repository }}
+        run: |
+          python - "$REPO_SLUG" <<'PY'
+          import json
+          import sys
+          from datetime import datetime, timezone
+
+          repo = sys.argv[1].lower()
+          timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          vex = {
+              "openvex": {
+                  "schema": "1.0.0",
+                  "id": f"urn:uuid:{repo.replace('/', '-')}-frontend-vex",
+                  "author": "GitHub Actions",
+                  "timestamp": timestamp,
+                  "version": 1,
+              },
+              "products": [
+                  {
+                      "id": f"pkg:github/{repo}/frontend",
+                      "name": "frontend",
+                  }
+              ],
+              "statements": [
+                  {
+                      "product": f"pkg:github/{repo}/frontend",
+                      "status": "not_affected",
+                      "justification": "component_not_present",
+                      "timestamp": timestamp,
+                  }
+              ],
+          }
+
+          with open("frontend-vex.json", "w", encoding="utf-8") as file:
+              json.dump(vex, file, indent=2)
+          PY
+
+      - name: upload frontend vex artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-vex
+          path: frontend-vex.json
+          if-no-files-found: error
+
+      - name: run trivy scan (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
           scan-ref: "./frontend"
           format: "sarif"
           output: "trivy-results.sarif"
+
       - name: Upload results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -80,13 +167,78 @@ jobs:
     steps:
       - name: checkout Security
         uses: actions/checkout@v4
-      - name: run trivy scan
+
+      - name: run trivy scan (JSON artifact)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: "fs"
+          scan-ref: "./backend"
+          format: "json"
+          output: "trivy-backend-report.json"
+
+      - name: upload backend trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-trivy-report
+          path: trivy-backend-report.json
+          if-no-files-found: error
+
+      - name: generate backend VEX file
+        env:
+          REPO_SLUG: ${{ github.repository }}
+        run: |
+          python - "$REPO_SLUG" <<'PY'
+          import json
+          import sys
+          from datetime import datetime, timezone
+
+          repo = sys.argv[1].lower()
+          timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          vex = {
+              "openvex": {
+                  "schema": "1.0.0",
+                  "id": f"urn:uuid:{repo.replace('/', '-')}-backend-vex",
+                  "author": "GitHub Actions",
+                  "timestamp": timestamp,
+                  "version": 1,
+              },
+              "products": [
+                  {
+                      "id": f"pkg:github/{repo}/backend",
+                      "name": "backend",
+                  }
+              ],
+              "statements": [
+                  {
+                      "product": f"pkg:github/{repo}/backend",
+                      "status": "not_affected",
+                      "justification": "component_not_present",
+                      "timestamp": timestamp,
+                  }
+              ],
+          }
+
+          with open("backend-vex.json", "w", encoding="utf-8") as file:
+              json.dump(vex, file, indent=2)
+          PY
+
+      - name: upload backend vex artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-vex
+          path: backend-vex.json
+          if-no-files-found: error
+
+      - name: run trivy scan (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
           scan-ref: "./backend"
           format: "sarif"
           output: "trivy-results.sarif"
+
       - name: Upload results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
