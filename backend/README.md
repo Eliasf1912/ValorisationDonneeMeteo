@@ -1,99 +1,138 @@
-# CI/CD & Monitoring - Etat du projet
+# Backend - API Meteo
 
-Ce document resume ce qui a ete mis en place cote CI/CD et monitoring (Prometheus), pour que l'equipe s'y retrouve facilement.
+API REST Django/DRF pour les donnees meteorologiques InfoClimat.
 
----
+## Prerequis
 
-## 1. CI/CD (GitHub Actions)
+- Python >= 3.12
+- [uv](https://docs.astral.sh/uv/) pour la gestion des dependances
+- Docker pour TimescaleDB et les services de monitoring
 
-Fichier : `.github/workflows/ci.yml`
+## Installation
 
-### Declencheurs
-
-- `pull_request` vers `main`
-- `push` sur `main`
-
-### Jobs
-
-| Job                       | Role                                                                  |
-| ------------------------- | --------------------------------------------------------------------- |
-| `install-frontend`        | install deps, run tests (Vitest), run linter                          |
-| `install-backend`         | install deps (uv), run tests (pytest), run linter (ruff)              |
-| `Security-scan-frontend`  | scan Trivy (frontend)                                                 |
-| `Security-scan-backend`   | scan Trivy (backend)                                                  |
-| `build-and-push-frontend` | build et push image Docker sur GHCR (uniquement sur push vers `main`) |
-| `build-and-push-backend`  | build et push image Docker sur GHCR (uniquement sur push vers `main`) |
-
-### Ce qui est genere a chaque run (artifacts telechargeables)
-
-Dans Actions, choisir un run, section Artifacts en bas de page :
-
-- `frontend-test-report` / `backend-test-report` : resultats de tests au format JUnit XML
-- `frontend-trivy-report` / `backend-trivy-report` : rapport de scan securite Trivy (JSON, lisible en dehors de GitHub)
-- `frontend-vex` / `backend-vex` : fichier VEX (format OpenVEX)
-
-Le scan Trivy est aussi envoye en SARIF vers l'onglet Security du repo (alertes classiques GitHub).
-
-### Fichier VEX
-
-Le fichier VEX genere declare un statut `not_affected` de facon generique pour tout le produit, pas vulnerabilite par vulnerabilite. Ce niveau est considere suffisant pour le projet : le format et le pipeline sont en place et repondent a la consigne. Reste tel quel, aucune action supplementaire requise.
-
-### Build et push Docker
-
-- Registry : GHCR (`ghcr.io`)
-- Se declenche uniquement sur un vrai push sur `main` (pas sur les PR), donc pas de pollution du registry a chaque PR
-- Images : `ghcr.io/<owner>/14_valorisationdonneemeteo-backend` et `-frontend`, tags `latest` et SHA du commit
-
-### Badge CI
-
-Ajoute dans le README principal du projet.
-
-### Pipeline testing (valide)
-
-Un test a ete volontairement casse sur une PR pour verifier que la CI le detecte (job passe en rouge, jobs dependants correctement skippes). Le test a ensuite ete corrige, la PR mergee, tout repasse au vert. Comportement confirme de bout en bout.
-
----
-
-## 2. Monitoring - Prometheus
-
-### Ce qui a ete fait
-
-- Service `prometheus` ajoute dans `docker-compose.dev.yml`, sur le reseau `app_net`
-- Config dans `prometheus/prometheus.yml`
-- `django-prometheus` installe et configure cote backend (`INSTALLED_APPS`, middlewares before et after, route `/metrics` exposee)
-- Prometheus scrape avec succes :
-  - lui-meme (job `prometheus`, `localhost:9090`)
-  - le backend Django (job `backend`, `backend:8000`, nom du service Docker et non `localhost`, vu que Prometheus tourne dans le reseau Docker interne)
-- Verifie en interrogeant une vraie metrique applicative (`django_http_requests_total_by_method_total`) dans l'UI Prometheus (`localhost:9090`), resultat coherent avec les vraies requetes faites sur le backend
-
-### Comment lancer
+Depuis la racine du projet :
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+cd backend
+uv sync --group dev
+cp .env.example .env
 ```
 
-UI Prometheus : `http://localhost:9090`
-Aller dans Status puis Targets pour voir l'etat des jobs scrapes (doit afficher `prometheus` et `backend` en UP)
+## Donnees simulees
 
-### Note sur le lien metrics dans l'UI Prometheus
+Le backend peut fonctionner sans donnees meteo reelles. Dans `.env`, definir :
 
-Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer une erreur DNS car il utilise le hostname interne du conteneur. Ce n'est pas un bug : il suffit de taper `http://localhost:9090/metrics` directement dans la barre d'adresse pour acceder a l'endpoint depuis l'exterieur du reseau Docker.
+```env
+MOCKED_DATA=true
+```
 
-### Reste a faire cote Prometheus
+Pour utiliser la base TimescaleDB et les donnees reelles, definir `MOCKED_DATA=false` et demarrer la base avec Docker Compose.
 
-- Ajouter le frontend comme target si des metriques y sont exposees (a voir si pertinent selon la stack Nuxt)
+## Demarrage
 
----
+### API seule
 
-## 3. Monitoring - Grafana (a faire, pris en charge par un autre membre de l'equipe)
+```bash
+cd backend
+uv run python manage.py runserver
+```
 
-- Ajouter l'image Grafana au docker-compose
-- Ajouter une datasource pointant vers Prometheus : utiliser `http://prometheus:9090` (nom du service Docker, reseau interne, pas `localhost`)
-- Construire un dashboard avec des visualisations pertinentes des metriques backend
+L'API est disponible sur http://localhost:8000.
 
----
+### Environnement Docker complet
 
-## 4. Docker Hardened Image (pas encore commence)
+Depuis la racine du projet :
 
-- Trouver les images hardened Python et npm sur https://dhi.io
-- Adapter les Dockerfile (backend et frontend) pour utiliser ces images en base, dans une optique prod ready
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Les services disponibles sont :
+
+- API backend : http://localhost:8000
+- Prometheus : http://localhost:9090
+- Grafana : http://localhost:3000
+
+## Tests et qualite
+
+Depuis `backend/` :
+
+```bash
+uv run pytest weather/tests/unit
+uv run pytest weather/tests/unit/test_date_range.py
+uv run ruff check
+```
+
+La CI GitHub Actions execute les tests unitaires Pytest et Ruff. Elle genere aussi un rapport de tests JUnit telechargeable depuis les artifacts du run.
+
+## CI/CD et securite
+
+Le workflow est defini dans [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
+Pour le backend, il :
+
+- installe les dependances avec `uv`
+- execute les tests unitaires et Ruff
+- analyse le code et les dependances avec Trivy
+- publie les resultats Trivy en SARIF dans l'onglet Security de GitHub
+- exporte un rapport Trivy JSON et un fichier VEX comme artifacts telechargeables
+- construit et publie l'image backend sur GHCR uniquement lors d'un push sur `main`
+
+L'image de production utilise une Docker Hardened Image Python et s'execute avec un utilisateur non-root.
+
+## Monitoring Prometheus
+
+Le projet utilise `django-prometheus` pour exposer les metriques du backend sur :
+
+```text
+http://localhost:8000/metrics
+```
+
+Prometheus scrape le backend via le nom de service Docker `backend:8000`. Dans l'interface Prometheus, aller dans **Status > Targets** et verifier que les cibles `backend` et `prometheus` sont `UP`.
+
+Quelques metriques utiles :
+
+- `django_http_requests_total_by_method_total`
+- metriques de temps et de volume des requetes HTTP
+- metriques des requetes PostgreSQL
+- utilisation memoire du processus backend
+
+Grafana est provisionne automatiquement avec Prometheus comme datasource et le dashboard **Meteo Backend Dashboard**. Les identifiants locaux par defaut sont `admin` / `admin`.
+
+Le monitoring Prometheus couvre le backend Django. Le frontend Nuxt n'est pas une cible Prometheus dans ce projet.
+
+## API
+
+| Endpoint                                 | Description                        |
+| ---------------------------------------- | ---------------------------------- |
+| `/api/v1/stations/`                      | Liste des stations meteo           |
+| `/api/v1/temperature/national-indicator` | Indicateur thermique national      |
+| `/api/v1/temperature/deviation`          | Ecart a la normale                 |
+| `/api/v1/temperature/records`            | Records de temperature par station |
+| `/metrics`                               | Metriques Prometheus du backend    |
+
+Exemple :
+
+```bash
+curl "http://localhost:8000/api/v1/temperature/national-indicator?date_start=2025-01-01&date_end=2025-01-31&granularity=month"
+```
+
+Les specifications OpenAPI sont disponibles dans [`openapi/target-specs/openapi.yaml`](openapi/target-specs/openapi.yaml).
+
+## Architecture
+
+Le backend ne manipule pas directement les tables sources via l'ORM Django. Les modeles Django s'appuient sur des vues SQL, puis les data sources et services metier construisent les reponses de l'API.
+
+```text
+Tables sources -> vues SQL -> modeles Django -> data sources -> services metier -> API REST
+```
+
+## Base de developpement
+
+TimescaleDB peut etre demarree avec :
+
+```bash
+docker compose -f docker-compose.dev.yml up -d timescaledb
+```
+
+Les scripts de seed et les fichiers SQL associes se trouvent dans `backend/dev_scripts/` et `backend/sql/`. Les fichiers de donnees necessaires au seed sont documentes dans la configuration de l'environnement de developpement.

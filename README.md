@@ -1,6 +1,6 @@
 # CI/CD & Monitoring - Etat du projet
 
-Ce document resume ce qui a ete mis en place cote CI/CD et monitoring (Prometheus), pour que l'equipe s'y retrouve facilement.
+![CI](https://github.com/dataforgoodfr/14_ValorisationDonneeMeteo/actions/workflows/ci.yml/badge.svg)
 
 ---
 
@@ -44,10 +44,6 @@ Le fichier VEX genere declare un statut `not_affected` de facon generique pour t
 - Se declenche uniquement sur un vrai push sur `main` (pas sur les PR), donc pas de pollution du registry a chaque PR
 - Images : `ghcr.io/<owner>/14_valorisationdonneemeteo-backend` et `-frontend`, tags `latest` et SHA du commit
 
-### Badge CI
-
-Ajoute dans le README principal du projet.
-
 ### Pipeline testing (valide)
 
 Un test a ete volontairement casse sur une PR pour verifier que la CI le detecte (job passe en rouge, jobs dependants correctement skippes). Le test a ensuite ete corrige, la PR mergee, tout repasse au vert. Comportement confirme de bout en bout.
@@ -79,10 +75,6 @@ Aller dans Status puis Targets pour voir l'etat des jobs scrapes (doit afficher 
 
 Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer une erreur DNS car il utilise le hostname interne du conteneur. Ce n'est pas un bug : il suffit de taper `http://localhost:9090/metrics` directement dans la barre d'adresse pour acceder a l'endpoint depuis l'exterieur du reseau Docker.
 
-### Reste a faire cote Prometheus
-
-- Ajouter le frontend comme target si des metriques y sont exposees (a voir si pertinent selon la stack Nuxt)
-
 ---
 
 ## 3. Monitoring - Grafana
@@ -104,7 +96,6 @@ Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer un
 - URL : `http://localhost:3000`
 - Identifiants par défaut : `admin` / `admin`
 - Le tableau de bord **Meteo Backend Dashboard** est automatiquement disponible dès le démarrage sans configuration manuelle requise.
-
 
 ---
 
