@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS builder
+FROM dhi.io/python:3.12-dev AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.10.0 /uv /uvx /bin/
 
@@ -7,18 +7,23 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-FROM python:3.12-slim-bookworm
+
+FROM dhi.io/python:3.12
+
+
+USER root
 
 WORKDIR /app
 
-COPY --from=builder /app/.venv /app/.venv
-
-COPY . .
+COPY --from=builder --chown=nonroot:nonroot /app/.venv /app/.venv
+COPY --chown=nonroot:nonroot . .
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TZ=Europe/Paris
+
+USER nonroot
 
 EXPOSE 8000
 

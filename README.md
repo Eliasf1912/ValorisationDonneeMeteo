@@ -108,7 +108,19 @@ Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer un
 
 ---
 
-## 4. Docker Hardened Image (pas encore commence)
+## 4. Docker Hardened Image
 
-- Trouver les images hardened Python et npm sur https://dhi.io
-- Adapter les Dockerfile (backend et frontend) pour utiliser ces images en base, dans une optique prod ready
+### Ce qui a été fait
+
+- `backend/Dockerfile` et `frontend/Dockerfile` réécrits pour partir des [Docker Hardened Images](https://dhi.io) au lieu de `python:3.12-slim-bookworm` / `node:24-alpine`
+- Build multi-stage, comme avant, mais avec deux variantes DHI :
+  - `dhi.io/python:3.12-dev` / `dhi.io/node:24-alpine-dev` pour le stage de build (shell + gestionnaire de paquets, tourne en root)
+  - `dhi.io/python:3.12` / `dhi.io/node:24-alpine` pour le stage final (image minimale type distroless, tourne en utilisateur non-root par défaut : `nonroot` pour Python, `node` pour Node.js)
+- Dans le stage final, on repasse temporairement en `USER root` pour créer le `WORKDIR` et copier les fichiers (`COPY --chown=...`), puis on repasse en utilisateur non-root avant le `CMD`
+- Pipeline CI (`.github/workflows/ci.yml`) : ajout d'une étape `docker/login-action` sur le registre `dhi.io` dans les jobs `build-and-push-backend` / `build-and-push-frontend`
+- Testé en local avec `docker compose -f docker-compose.dev.yml up -d --build` : les 6 services démarrent correctement, le backend tourne bien en utilisateur `nonroot` (gunicorn démarre sans erreur de permission)
+
+### Configuration nécessaire
+
+- Compte Docker Hub authentifié (`docker login dhi.io`), gratuit
+- Secrets GitHub Actions `DOCKERHUB_USERNAME` et `DOCKERHUB_TOKEN` configurés sur le repo pour que la CI puisse aussi se connecter à dhi.io
