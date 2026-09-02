@@ -85,11 +85,26 @@ Le lien "metrics" cliquable dans l'UI Prometheus (page Targets) peut renvoyer un
 
 ---
 
-## 3. Monitoring - Grafana (a faire, pris en charge par un autre membre de l'equipe)
+## 3. Monitoring - Grafana
 
-- Ajouter l'image Grafana au docker-compose
-- Ajouter une datasource pointant vers Prometheus : utiliser `http://prometheus:9090` (nom du service Docker, reseau interne, pas `localhost`)
-- Construire un dashboard avec des visualisations pertinentes des metriques backend
+### Ce qui a été fait
+
+- Service `grafana` ajouté dans `docker-compose.dev.yml` (image `grafana/grafana:latest`, port `3000:3000`, réseau `app_net`)
+- Provisioning automatique de la datasource Prometheus dans `grafana/provisioning/datasources/prometheus.yml` (cible : `http://prometheus:9090`)
+- Provisioning automatique des dashboards dans `grafana/provisioning/dashboards/dashboards.yml`
+- Dashboard complet pré-configuré dans `grafana/dashboards/meteo_dashboard.json` avec les visualisations suivantes :
+  - Statut en direct des cibles (Backend Django et Prometheus)
+  - Débit de requêtes HTTP par méthode (`req/s`)
+  - Répartition des codes de réponses HTTP (`2xx`, `4xx`, `5xx`)
+  - Utilisation de la mémoire RAM par le backend
+  - Débit d'exécution des requêtes base de données (PostgreSQL/TimescaleDB)
+
+### Accès à Grafana
+
+- URL : `http://localhost:3000`
+- Identifiants par défaut : `admin` / `admin`
+- Le tableau de bord **Meteo Backend Dashboard** est automatiquement disponible dès le démarrage sans configuration manuelle requise.
+
 
 ---
 

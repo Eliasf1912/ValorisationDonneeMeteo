@@ -8,6 +8,8 @@ RUN npm install
 
 COPY . .
 
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 RUN npm run build
 
 FROM node:24-alpine AS prod
